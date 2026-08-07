@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101216" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mercado">
+<meta name="author" content="Luis Alejandro Jaramillo">
+<meta name="description" content="Lista de mercado interactiva por categorías, con progreso, importación de listas y modo noche.">
+<title>🛒 Lista de mercado</title>
+<script>
+  /* Aplica el tema guardado antes de pintar, para evitar el parpadeo blanco */
+  try {
+    var t = JSON.parse(localStorage.getItem('listaMercado.v3') || 'null');
+    document.documentElement.setAttribute('data-theme', (t && t.theme) || 'auto');
+  } catch (e) {}
+</script>
+<style>
+  /* ---------------- Tokens ---------------- */
+  :root{
+    color-scheme:light;
+    --bg:#F4F5F7;
+    --card:#FFFFFF;
+    --card-soft:#FAFBFC;
+    --text:#12161C;
+    --text-2:#454C55;
+    --muted:#767D87;
+    --line:#E9ECEF;
+    --track:#DFE3E8;
+    --green:#0F8A5B;
+    --red:#C93B31;
+    --field:#FFFFFF;
+    --field-line:#DDE1E6;
+    --sheet:#FFFFFF;
+    --scrim:rgba(18,22,28,.42);
+    --toast-bg:#181C22;
+    --toast-text:#FFFFFF;
+    --toast-action:#5FE0A8;
+    --seg-bg:#E7EAEE;
+    --seg-thumb:#FFFFFF;
+    --on-green:#FFFFFF;
+    --tint:rgba(18,22,28,.06);
+    --radius:20px;
+    --shadow:0 1px 2px rgba(18,22,28,.05), 0 10px 30px rgba(18,22,28,.06);
+    --blur:rgba(244,245,247,.82);
+    --pad:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --bg:#101216;
+      --card:#1A1E24;
+      --card-soft:#20242B;
+      --text:#F2F4F7;
+      --text-2:#C7CDD5;
+      --muted:#98A0AA;
+      --line:#272C34;
+      --track:#333944;
+      --green:#3BD190;
+      --red:#FF7166;
+      --field:#242932;
+      --field-line:#343A44;
+      --sheet:#1C2027;
+      --scrim:rgba(0,0,0,.55);
+      --toast-bg:#2B313A;
+      --toast-text:#F2F4F7;
+      --toast-action:#5FE0A8;
+      --seg-bg:#272C34;
+      --seg-thumb:#3A414C;
+      --on-green:#08150F;
+      --tint:rgba(255,255,255,.09);
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+      --blur:rgba(16,18,22,.82);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#101216;
+    --card:#1A1E24;
+    --card-soft:#20242B;
+    --text:#F2F4F7;
+    --text-2:#C7CDD5;
+    --muted:#98A0AA;
+    --line:#272C34;
+    --track:#333944;
+    --green:#3BD190;
+    --red:#FF7166;
+    --field:#242932;
+    --field-line:#343A44;
+    --sheet:#1C2027;
+    --scrim:rgba(0,0,0,.55);
+    --toast-bg:#2B313A;
+    --toast-text:#F2F4F7;
+    --toast-action:#5FE0A8;
+    --seg-bg:#272C34;
+    --seg-thumb:#3A414C;
+    --on-green:#08150F;
+    --tint:rgba(255,255,255,.09);
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+    --blur:rgba(16,18,22,.82);
+  }
+
+  /* Acento por categoría. En oscuro se aclara para que el texto siga legible. */
+  .card,.seg,.swatch{--accent:var(--accent-base,#0F8A5B)}
+  @supports (color: color-mix(in srgb, red 50%, white)){
+    @media (prefers-color-scheme: dark){
+      :root:not([data-theme="light"]) .card,
+      :root:not([data-theme="light"]) .seg,
+      :root:not([data-theme="light"]) .swatch{--accent:color-mix(in srgb, var(--accent-base) 62%, #FFFFFF)}
+    }
+    :root[data-theme="dark"] .card,
+    :root[data-theme="dark"] .seg,
+    :root[data-theme="dark"] .swatch{--accent:color-mix(in srgb, var(--accent-base) 62%, #FFFFFF)}
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:17px;line-height:1.35;overflow-x:hidden;
+    padding-bottom:calc(24px + env(safe-area-inset-bottom));
+  }
+  /* El respiro lateral respeta la muesca y los bordes curvos del teléfono */
+  .wrap{
+    max-width:750px;margin:0 auto;
+    padding-left:calc(var(--pad) + env(safe-area-inset-left));
+    padding-right:calc(var(--pad) + env(safe-area-inset-right));
+  }
+  button{font:inherit}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+  /* ---------------- Cabecera ---------------- */
+  .topbar{
+    position:sticky;top:0;z-index:30;
+    background:var(--blur);
+    backdrop-filter:saturate(180%) blur(20px);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:1px solid var(--line);
+    padding:calc(14px + env(safe-area-inset-top)) 0 13px;
+  }
+  .title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+  h1{font-size:clamp(20px,5.4vw,26px);line-height:1.1;font-weight:700;letter-spacing:-.024em;margin:0;
+     min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .theme{display:flex;gap:2px;background:var(--seg-bg);border-radius:11px;padding:2px;flex:0 0 auto}
+  .theme button{
+    border:0;background:transparent;color:var(--muted);border-radius:9px;
+    width:clamp(30px,9vw,36px);height:30px;font-size:14px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s ease,color .15s ease;
+  }
+  .theme button[aria-pressed="true"]{background:var(--seg-thumb);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .status{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 9px}
+  .status p{margin:0;font-size:15px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .status strong{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+  .pct{font-size:15px;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums;white-space:nowrap;flex:0 0 auto}
+  /* Un tramo por categoría, ancho proporcional a cuántos productos tiene */
+  .bar{display:flex;gap:3px;height:9px;overflow:hidden;border-radius:99px}
+  .seg{background:var(--track);border-radius:99px;overflow:hidden;min-width:6px}
+  .seg i{display:block;height:100%;width:0%;border-radius:99px;background:var(--accent);transition:width .32s cubic-bezier(.32,.72,0,1)}
+
+  /* ---------------- Tarjetas ---------------- */
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin:16px 0;overflow:hidden}
+  .card-head{display:flex;align-items:center;padding:6px 6px 6px 14px}
+  .head-main{
+    flex:1;min-width:0;display:flex;align-items:center;gap:11px;
+    border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;
+    padding:11px 4px 11px 0;-webkit-user-select:none;user-select:none;
+  }
+  .emoji{
+    flex:0 0 auto;width:34px;height:34px;border-radius:11px;font-size:18px;
+    background:var(--tint);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .title{flex:1;min-width:0;font-size:16px;font-weight:650;letter-spacing:-.01em;
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s ease}
+  .count{
+    flex:0 0 auto;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;
+    color:var(--accent);background:var(--tint);
+    border-radius:99px;padding:5px 11px;white-space:nowrap;
+  }
+  .card.complete .count{color:var(--card);background:var(--accent)}
+  .chev{flex:0 0 auto;width:10px;height:10px;border:solid var(--muted);border-width:0 2px 2px 0;
+        transform:rotate(45deg);margin:-4px 2px 0 2px;transition:transform .2s ease}
+  .card.collapsed .chev{transform:rotate(-45deg);margin-top:2px}
+  .card.collapsed .card-body{display:none}
+  .more{
+    flex:0 0 auto;width:44px;height:44px;border:0;background:transparent;color:var(--muted);
+    border-radius:50%;font-size:20px;line-height:1;cursor:pointer;letter-spacing:1px;
+  }
+  .more:active{background:var(--line);color:var(--text)}
+
+  @supports (background: color-mix(in srgb, red 50%, transparent)){
+    .emoji{background:color-mix(in srgb, var(--accent) 15%, transparent)}
+    .count{background:color-mix(in srgb, var(--accent) 13%, transparent)}
+  }
+
+  ul.items{list-style:none;margin:0;padding:0}
+  .item{display:flex;align-items:center;border-top:1px solid var(--line);transition:background .15s ease}
+  .item.new{animation:in .22s ease}
+  @keyframes in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .row{
+    flex:1;min-width:0;display:flex;align-items:center;gap:14px;
+    padding:13px 4px 13px 16px;min-height:56px;cursor:pointer;
+    -webkit-user-select:none;user-select:none;
+  }
+  .chk{position:absolute;opacity:0;width:0;height:0}
+  .box{
+    flex:0 0 auto;width:27px;height:27px;border-radius:50%;
+    border:2px solid var(--track);background:transparent;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:background .16s ease,border-color .16s ease,transform .16s ease;
+  }
+  .box::after{
+    content:"";width:7px;height:13px;margin-top:-3px;
+    border:solid #fff;border-width:0 2.5px 2.5px 0;
+    transform:rotate(45deg) scale(.4);opacity:0;
+    transition:transform .16s cubic-bezier(.34,1.56,.64,1),opacity .16s ease;
+  }
+  .chk:checked + .box{background:var(--accent);border-color:var(--accent)}
+  .chk:checked + .box::after{opacity:1;transform:rotate(45deg) scale(1)}
+  .row:active .box{transform:scale(.9)}
+  .chk:focus-visible + .box{outline:2px solid var(--green);outline-offset:3px}
+  /* Nombres largos bajan de línea en vez de desbordar la tarjeta */
+  .name{flex:1;min-width:0;overflow-wrap:anywhere;transition:color .16s ease}
+  .item.done{background:var(--card-soft)}
+  .item.done .name{text-decoration:line-through;color:var(--muted)}
+  .del{
+    flex:0 0 auto;width:46px;height:46px;margin-right:6px;border:0;background:transparent;
+    color:var(--muted);opacity:.6;font-size:23px;line-height:1;border-radius:50%;cursor:pointer;
+    transition:opacity .15s ease,color .15s ease,background .15s ease;
+  }
+  .del:active{background:var(--line);color:var(--red);opacity:1}
+
+  .empty{margin:0;padding:18px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:15px}
+
+  .add{display:flex;gap:10px;padding:13px 16px 16px;border-top:1px solid var(--line);background:var(--card-soft)}
+  input[type="text"],textarea{
+    width:100%;min-width:0;padding:12px 15px;border:1px solid var(--field-line);border-radius:14px;
+    background:var(--field);font:inherit;font-size:16px;color:var(--text);
+  }
+  input[type="text"]{height:47px;padding:0 15px}
+  input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
+  input[type="text"]:focus,textarea:focus{
+    outline:none;border-color:var(--green);
+    box-shadow:0 0 0 3px var(--tint);
+  }
+  .add button{
+    flex:0 0 auto;width:47px;height:47px;border:0;border-radius:14px;background:var(--accent);
+    color:#fff;font-size:27px;line-height:1;cursor:pointer;transition:transform .12s ease,filter .15s ease;
+  }
+  .add button:active{transform:scale(.94)}
+
+  /* Estado sin categorías */
+  .blank{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 22px;text-align:center}
+  .blank h2{margin:0 0 6px;font-size:18px;font-weight:650}
+  .blank p{margin:0 0 18px;color:var(--muted);font-size:15px}
+
+  /* ---------------- Menú de acciones ---------------- */
+  .menu{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin:22px 0 0}
+  .menu button{
+    display:flex;align-items:center;gap:13px;width:100%;padding:15px 16px;
+    border:0;border-top:1px solid var(--line);background:transparent;color:var(--text);
+    font-size:16px;text-align:left;cursor:pointer;transition:color .15s ease,background .15s ease;
+  }
+  .menu button:first-child{border-top:0}
+  .menu button:active{background:var(--card-soft)}
+  .menu button[hidden]{display:none}
+  .menu .ico{
+    flex:0 0 auto;width:30px;height:30px;border-radius:9px;background:var(--card-soft);
+    border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:15px;
+    transition:background .15s ease,border-color .15s ease,color .15s ease;
+  }
+  .menu .danger{color:var(--red)}
+  .menu button.ok{color:var(--green);font-weight:650}
+  .menu button.ok .ico{background:var(--tint);border-color:transparent;color:var(--green)}
+  .note{margin:14px 0 0;text-align:center;font-size:13px;color:var(--muted);line-height:1.5}
+
+  /* ---------------- Créditos ---------------- */
+  .credit{margin-top:26px;text-align:center}
+  .credit p{margin:0;font-size:12px;color:var(--muted);line-height:1.6}
+  .credit .sep{opacity:.5;padding:0 6px}
+
+  /* ---------------- Hoja inferior ---------------- */
+  .scrim{
+    position:fixed;inset:0;background:var(--scrim);z-index:60;
+    display:flex;align-items:flex-end;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .22s ease;
+  }
+  .scrim[hidden]{display:none}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .sheet{
+    width:100%;max-width:750px;background:var(--sheet);color:var(--text);
+    border-radius:26px 26px 0 0;
+    padding:10px calc(18px + env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
+    max-height:88vh;max-height:88dvh;overflow:auto;transform:translateY(26px);
+    transition:transform .26s cubic-bezier(.32,.72,0,1);
+    box-shadow:0 -8px 40px rgba(0,0,0,.22);
+  }
+  .scrim.open .sheet{transform:none}
+  .grab{width:38px;height:5px;border-radius:99px;background:var(--track);margin:0 auto 14px}
+  .sheet h2{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.015em}
+  .sheet .sub{margin:0 0 18px;color:var(--muted);font-size:14px;line-height:1.5}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:7px}
+  .field-row{display:flex;gap:10px}
+  .field-row .emoji-in{width:70px;text-align:center;flex:0 0 auto}
+  .field-row input:not(.emoji-in){flex:1;min-width:0;width:auto}
+  textarea{min-height:180px;resize:vertical;line-height:1.5;font-size:16px;
+           font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .swatches{display:flex;flex-wrap:wrap;gap:10px}
+  .swatch{
+    width:38px;height:38px;border-radius:50%;border:2px solid transparent;background:var(--accent-base);
+    cursor:pointer;padding:0;transition:transform .12s ease;
+  }
+  .swatch[aria-pressed="true"]{border-color:var(--text);transform:scale(1.06)}
+  .move{display:flex;gap:10px}
+  .move button{flex:1}
+  .sheet-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+  .primary{
+    min-height:52px;border:0;border-radius:15px;background:var(--green);color:var(--on-green);
+    font-size:16px;font-weight:650;cursor:pointer;transition:filter .15s ease;
+  }
+  .secondary{
+    min-height:52px;border:1px solid var(--field-line);border-radius:15px;background:transparent;
+    color:var(--text);font-size:16px;font-weight:600;cursor:pointer;transition:background .15s ease;
+  }
+  .secondary:disabled{opacity:.4;cursor:default}
+  .destructive{
+    min-height:52px;border:0;border-radius:15px;background:transparent;color:var(--red);
+    font-size:16px;font-weight:600;cursor:pointer;transition:background .15s ease;
+  }
+
+  /* ---------------- Aviso ---------------- */
+  .toast{
+    position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));
+    transform:translate(-50%,16px);display:flex;align-items:center;gap:14px;
+    background:var(--toast-bg);color:var(--toast-text);font-size:15px;
+    padding:13px 15px 13px 18px;border-radius:16px;opacity:0;pointer-events:none;z-index:80;
+    max-width:min(560px, calc(100% - 32px));transition:opacity .2s ease,transform .2s ease;
+    box-shadow:0 12px 32px rgba(0,0,0,.3);
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .toast button{
+    flex:0 0 auto;border:0;background:transparent;color:var(--toast-action);
+    font-weight:650;cursor:pointer;padding:4px 6px;
+  }
+  .toast button[hidden]{display:none}
+
+  /* ---------------- Pantallas angostas ---------------- */
+  @media (max-width:359px){
+    :root{--pad:12px}
+    .row{padding-left:14px;gap:12px}
+    .card-head{padding-left:12px}
+    .add{padding:12px 12px 14px}
+    .menu button{padding:14px 13px;gap:11px}
+    .count{padding:4px 9px;font-size:13px}
+  }
+
+  /* ---------------- Escritorio ---------------- */
+  @media (min-width:760px){
+    body{padding-bottom:40px}
+    .topbar{padding-top:20px}
+    .card{margin:18px 0}
+  }
+  @media (min-width:700px) and (min-height:560px){
+    .scrim{align-items:center;padding:24px}
+    .sheet{
+      max-width:540px;border-radius:24px;max-height:84vh;max-height:84dvh;
+      transform:translateY(12px) scale(.98);
+      padding:16px 24px 24px;
+      box-shadow:0 24px 60px rgba(0,0,0,.32);
+    }
+    .scrim.open .sheet{transform:none}
+    .grab{display:none}
+  }
+  @media (hover:hover) and (pointer:fine){
+    .item:hover{background:var(--card-soft)}
+    .menu button:hover{background:var(--card-soft)}
+    .head-main:hover .title{color:var(--accent)}
+    .more:hover{background:var(--line);color:var(--text)}
+    .del:hover{opacity:1;color:var(--red);background:var(--line)}
+    .add button:hover,.primary:hover{filter:brightness(1.07)}
+    .secondary:hover{background:var(--card-soft)}
+    .destructive:hover{background:var(--tint)}
+    .theme button:hover{color:var(--text)}
+    .swatch:hover{transform:scale(1.08)}
+  }
+
+  /* ---------------- Impresión ---------------- */
+  @media print{
+    body{background:#fff;color:#000;padding:0}
+    .topbar{position:static;background:none;border:0;backdrop-filter:none}
+    .theme,.menu,.add,.del,.more,.chev,.toast,.scrim,.note{display:none!important}
+    .card{box-shadow:none;border:1px solid #ccc;break-inside:avoid;page-break-inside:avoid}
+    .credit p{color:#666}
+  }
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="title-row">
+      <h1>🛒 Lista de mercado</h1>
+      <div class="theme" role="group" aria-label="Apariencia">
+        <button type="button" data-theme-btn="auto" aria-pressed="true" title="Automático" aria-label="Apariencia automática">A</button>
+        <button type="button" data-theme-btn="light" aria-pressed="false" title="Claro" aria-label="Modo claro">☀</button>
+        <button type="button" data-theme-btn="dark" aria-pressed="false" title="Oscuro" aria-label="Modo oscuro">☾</button>
+      </div>
+    </div>
+    <div class="status">
+      <p><strong id="doneCount">0</strong> de <span id="totalCount">37</span> comprados</p>
+      <span class="pct" id="pctLabel">0%</span>
+    </div>
+    <div class="bar" role="progressbar" aria-label="Progreso de la compra" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar">
+      <div class="seg" style="--accent-base:#0F8A5B;flex:17"><i></i></div>
+      <div class="seg" style="--accent-base:#5A9B2E;flex:12"><i></i></div>
+      <div class="seg" style="--accent-base:#B7622F;flex:8"><i></i></div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap" id="app">
+
+  <section class="card" data-name="Supermercado" data-emoji="🛒" data-accent="#0F8A5B" style="--accent-base:#0F8A5B">
+    <div class="card-head">
+      <button class="head-main" type="button" aria-expanded="true">
+        <span class="emoji">🛒</span><span class="title">Supermercado</span>
+        <span class="count">0/17</span><i class="chev"></i>
+      </button>
+    </div>
+    <div class="card-body">
+      <ul class="items">
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Hatsu en caja</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Gatorade</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Bretaña</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Queso tajado</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Kéfir / Yogur griego</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Queso parmesano</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Mantequilla</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Leche</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Lentejas</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Barritas de cereal</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Salchichas para perro</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Pan para perro</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Papas Ripio</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Pollo - muslos</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Pollo - pechuga</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Aceite</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Tocineta</span></label></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card" data-name="Plaza" data-emoji="🥬" data-accent="#5A9B2E" style="--accent-base:#5A9B2E">
+    <div class="card-head">
+      <button class="head-main" type="button" aria-expanded="true">
+        <span class="emoji">🥬</span><span class="title">Plaza</span>
+        <span class="count">0/12</span><i class="chev"></i>
+      </button>
+    </div>
+    <div class="card-body">
+      <ul class="items">
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Limón</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Papaya</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Banano</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Manzana</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Cilantro</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Cebolla cabezona</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Tomate</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Pimentón</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Ajo</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Papa</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Yuca</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Fríjoles</span></label></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card" data-name="Asado / Chimichurri" data-emoji="🥩" data-accent="#B7622F" style="--accent-base:#B7622F">
+    <div class="card-head">
+      <button class="head-main" type="button" aria-expanded="true">
+        <span class="emoji">🥩</span><span class="title">Asado / Chimichurri</span>
+        <span class="count">0/8</span><i class="chev"></i>
+      </button>
+    </div>
+    <div class="card-body">
+      <ul class="items">
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Carne para asado</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Perejil</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Cilantro</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Ajo</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Pimentón</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Aceite de oliva</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Pimienta</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name">Sal</span></label></li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<div class="wrap">
+  <div class="menu">
+    <button type="button" id="newCat"><span class="ico">➕</span>Nueva categoría</button>
+    <button type="button" id="importBtn"><span class="ico">📥</span>Importar lista…</button>
+    <button type="button" id="shareBtn" hidden><span class="ico">📲</span>Compartir lo que falta</button>
+    <button type="button" id="copyPending"><span class="ico">📝</span>Copiar lo que falta</button>
+    <button type="button" id="exportBtn"><span class="ico">📤</span>Copiar lista completa</button>
+    <button type="button" id="uncheckAll"><span class="ico">↺</span>Desmarcar todo</button>
+    <button type="button" id="removeDone"><span class="ico">🧹</span>Eliminar comprados</button>
+    <button type="button" id="restore" class="danger"><span class="ico">⟲</span>Restaurar lista original</button>
+  </div>
+  <p class="note">Los cambios se guardan en este dispositivo.<br>Toca una categoría para plegarla, o ⋯ para editarla.</p>
+</div>
+
+<footer class="wrap credit">
+  <p>© <span id="year">2026</span> Luis Alejandro Jaramillo<span class="sep">·</span>Todos los derechos reservados</p>
+</footer>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" id="sheet">
+    <div class="grab"></div>
+    <h2 id="sheetTitle"></h2>
+    <p class="sub" id="sheetSub"></p>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span id="toastText"></span>
+  <button type="button" id="toastAction" hidden>Deshacer</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'listaMercado.v3';
+  var PALETTE = ['#0F8A5B','#5A9B2E','#B7622F','#2F6FB7','#7A5AD6','#B08B12','#C0405C','#0E8F94'];
+
+  var app = document.getElementById('app');
+  var barEl = document.getElementById('bar');
+  var scrim = document.getElementById('scrim');
+  var sheet = document.getElementById('sheet');
+  var sheetBody = document.getElementById('sheetBody');
+  var toastEl = document.getElementById('toast');
+  var toastText = document.getElementById('toastText');
+  var toastAction = document.getElementById('toastAction');
+  var toastTimer, hideSheetTimer, undoSnapshot = null, lastFocus = null;
+  var seq = 0;
+
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  /* ---------------- modelo ---------------- */
+  function nid() { seq++; return 'k' + Date.now().toString(36) + seq; }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function readSeed() {
+    var cats = [];
+    app.querySelectorAll('.card').forEach(function (card, i) {
+      var items = [];
+      card.querySelectorAll('.name').forEach(function (n) {
+        items.push({ id: nid(), name: n.textContent.trim(), done: false });
+      });
+      cats.push({
+        id: nid(),
+        name: card.dataset.name,
+        emoji: card.dataset.emoji || '🧺',
+        accent: card.dataset.accent || PALETTE[i % PALETTE.length],
+        collapsed: false,
+        items: items
+      });
+    });
+    return { theme: 'auto', categories: cats };
+  }
+
+  var SEED = readSeed();
+  var model = null;
+
+  function load() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (saved && Array.isArray(saved.categories)) return saved;
+    } catch (e) {}
+    return null;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(model)); }
+    catch (e) { toast('No se pudo guardar en este navegador.'); }
+  }
+  function pushUndo() { undoSnapshot = clone(model); }
+  function undo() {
+    if (!undoSnapshot) return;
+    model = undoSnapshot; undoSnapshot = null;
+    applyTheme(model.theme); save(); render();
+    toast('Cambio deshecho.');
+  }
+
+  /* ---------------- utilidades ---------------- */
+  function buzz(ms) { if (navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } }
+  function catById(id) {
+    for (var i = 0; i < model.categories.length; i++) if (model.categories[i].id === id) return model.categories[i];
+    return null;
+  }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function splitEmoji(s) {
+    s = (s || '').trim();
+    try {
+      var m = s.match(/^(\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic}|\p{Emoji_Modifier})*)\s*(.*)$/u);
+      if (m) return { emoji: m[1], name: (m[3] || '').trim() };
+    } catch (e) {}
+    return { emoji: '', name: s };
+  }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+  function toast(msg, actionLabel, onAction) {
+    toastText.textContent = msg;
+    if (actionLabel) {
+      toastAction.textContent = actionLabel;
+      toastAction.hidden = false;
+      toastAction.onclick = function () { hideToast(); onAction(); };
+    } else {
+      toastAction.hidden = true;
+      toastAction.onclick = null;
+    }
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, actionLabel ? 6000 : 2400);
+  }
+  function hideToast() { toastEl.classList.remove('show'); }
+
+  /* Confirmación en el propio botón: ícono ✓ y etiqueta temporal */
+  function flashOk(btn, label) {
+    if (!btn || btn.dataset.busy === '1') return;
+    var ico = btn.querySelector('.ico');
+    var textNode = btn.lastChild;
+    btn.dataset.busy = '1';
+    var oldIco = ico ? ico.textContent : '';
+    var oldText = textNode ? textNode.nodeValue : '';
+    if (ico) ico.textContent = '✓';
+    if (textNode) textNode.nodeValue = label || '¡Copiado!';
+    btn.classList.add('ok');
+    setTimeout(function () {
+      if (ico) ico.textContent = oldIco;
+      if (textNode) textNode.nodeValue = oldText;
+      btn.classList.remove('ok');
+      btn.dataset.busy = '0';
+    }, 1800);
+  }
+
+  function legacyCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    var ok = false;
+    try {
+      ta.contentEditable = 'true';
+      var range = document.createRange();
+      range.selectNodeContents(ta);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      ta.setSelectionRange(0, text.length);
+      ok = document.execCommand('copy');
+      sel.removeAllRanges();
+    } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function copyText(text, okMsg, btn) {
+    function done() { flashOk(btn); toast(okMsg); buzz(8); }
+    function fallback() { if (legacyCopy(text)) done(); else openManualSheet(text); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+        return;
+      }
+    } catch (e) {}
+    fallback();
+  }
+
+  /* ---------------- tema ---------------- */
+  function applyTheme(mode) {
+    document.documentElement.setAttribute('data-theme', mode);
+    document.querySelectorAll('[data-theme-btn]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.themeBtn === mode ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('[data-theme-btn]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      model.theme = b.dataset.themeBtn;
+      applyTheme(model.theme);
+      save();
+    });
+  });
+
+  /* ---------------- render ---------------- */
+  function itemEl(cat, item, isNew) {
+    var li = el('li', 'item' + (item.done ? ' done' : '') + (isNew ? ' new' : ''));
+    li.dataset.id = item.id;
+
+    var label = el('label', 'row');
+    var chk = document.createElement('input');
+    chk.type = 'checkbox'; chk.className = 'chk'; chk.checked = !!item.done;
+    var box = el('span', 'box');
+    var name = el('span', 'name', item.name);
+    label.appendChild(chk); label.appendChild(box); label.appendChild(name);
+
+    var del = el('button', 'del', '×');
+    del.type = 'button';
+    del.setAttribute('aria-label', 'Eliminar ' + item.name);
+    del.addEventListener('click', function () { removeItem(cat.id, item.id); });
+
+    chk.addEventListener('change', function () {
+      item.done = chk.checked;
+      li.classList.toggle('done', item.done);
+      buzz(6); save(); refresh();
+    });
+
+    li.appendChild(label); li.appendChild(del);
+    return li;
+  }
+
+  function cardEl(cat) {
+    var card = el('section', 'card' + (cat.collapsed ? ' collapsed' : ''));
+    card.dataset.id = cat.id;
+    card.style.setProperty('--accent-base', cat.accent);
+
+    var head = el('div', 'card-head');
+    var main = el('button', 'head-main');
+    main.type = 'button';
+    main.setAttribute('aria-expanded', cat.collapsed ? 'false' : 'true');
+    main.appendChild(el('span', 'emoji', cat.emoji));
+    main.appendChild(el('span', 'title', cat.name));
+    main.appendChild(el('span', 'count', '0/0'));
+    main.appendChild(el('i', 'chev'));
+    main.addEventListener('click', function () {
+      cat.collapsed = !cat.collapsed;
+      card.classList.toggle('collapsed', cat.collapsed);
+      main.setAttribute('aria-expanded', cat.collapsed ? 'false' : 'true');
+      save();
+    });
+
+    var more = el('button', 'more', '⋯');
+    more.type = 'button';
+    more.setAttribute('aria-label', 'Opciones de ' + cat.name);
+    more.addEventListener('click', function () { openCategorySheet(cat); });
+
+    head.appendChild(main); head.appendChild(more);
+
+    var body = el('div', 'card-body');
+    var ul = el('ul', 'items');
+    cat.items.forEach(function (it) { ul.appendChild(itemEl(cat, it, false)); });
+    body.appendChild(ul);
+    if (!cat.items.length) body.appendChild(el('p', 'empty', 'Sin productos. Agrega uno aquí abajo.'));
+
+    var add = el('div', 'add');
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Agregar producto…';
+    input.setAttribute('aria-label', 'Agregar producto a ' + cat.name);
+    input.autocomplete = 'off';
+    input.setAttribute('enterkeyhint', 'done');
+    var plus = el('button', null, '+');
+    plus.type = 'button';
+    plus.setAttribute('aria-label', 'Agregar a ' + cat.name);
+
+    function submit() { addItem(cat, input); }
+    plus.addEventListener('click', submit);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+
+    add.appendChild(input); add.appendChild(plus);
+    body.appendChild(add);
+
+    card.appendChild(head); card.appendChild(body);
+    return card;
+  }
+
+  function blankEl() {
+    var box = el('div', 'blank');
+    box.appendChild(el('h2', null, 'La lista está vacía'));
+    box.appendChild(el('p', null, 'Crea una categoría o importa una lista en texto.'));
+    var b1 = el('button', 'primary', 'Importar lista');
+    b1.type = 'button'; b1.style.width = '100%'; b1.style.marginBottom = '10px';
+    b1.addEventListener('click', openImportSheet);
+    var b2 = el('button', 'secondary', 'Nueva categoría');
+    b2.type = 'button'; b2.style.width = '100%';
+    b2.addEventListener('click', function () { openCategorySheet(null); });
+    box.appendChild(b1); box.appendChild(b2);
+    return box;
+  }
+
+  function render() {
+    app.textContent = '';
+    if (!model.categories.length) app.appendChild(blankEl());
+    else model.categories.forEach(function (cat) { app.appendChild(cardEl(cat)); });
+    refresh();
+  }
+
+  function refresh() {
+    var total = 0, done = 0;
+    barEl.textContent = '';
+
+    model.categories.forEach(function (cat) {
+      var d = 0;
+      cat.items.forEach(function (it) { if (it.done) d++; });
+      total += cat.items.length; done += d;
+
+      var card = app.querySelector('.card[data-id="' + cat.id + '"]');
+      if (card) {
+        card.querySelector('.count').textContent = d + '/' + cat.items.length;
+        card.classList.toggle('complete', cat.items.length > 0 && d === cat.items.length);
+      }
+
+      var seg = el('div', 'seg');
+      seg.style.setProperty('--accent-base', cat.accent);
+      seg.style.flex = String(Math.max(cat.items.length, 1));
+      var fill = document.createElement('i');
+      seg.appendChild(fill);
+      barEl.appendChild(seg);
+      var w = cat.items.length ? (d / cat.items.length) * 100 : 0;
+      requestAnimationFrame(function () { fill.style.width = w + '%'; });
+    });
+
+    var pct = total ? Math.round((done / total) * 100) : 0;
+    document.getElementById('doneCount').textContent = done;
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('pctLabel').textContent = (total && done === total) ? '¡Listo! 🎉' : pct + '%';
+    barEl.setAttribute('aria-valuenow', pct);
+  }
+
+  /* ---------------- productos ---------------- */
+  function addItem(cat, input) {
+    var name = input.value.trim().replace(/\s+/g, ' ');
+    if (!name) { input.focus(); return; }
+    var dup = cat.items.some(function (it) { return it.name.toLowerCase() === name.toLowerCase(); });
+    if (dup) { toast('"' + name + '" ya está en la lista.'); input.select(); return; }
+
+    var item = { id: nid(), name: name, done: false };
+    cat.items.push(item);
+    save();
+
+    var card = app.querySelector('.card[data-id="' + cat.id + '"]');
+    var emptyMsg = card.querySelector('.empty');
+    if (emptyMsg) emptyMsg.remove();
+    card.querySelector('.items').appendChild(itemEl(cat, item, true));
+    input.value = '';
+    input.focus();
+    buzz(8);
+    refresh();
+  }
+
+  function removeItem(catId, itemId) {
+    var cat = catById(catId);
+    if (!cat) return;
+    var idx = -1;
+    cat.items.forEach(function (it, i) { if (it.id === itemId) idx = i; });
+    if (idx < 0) return;
+
+    pushUndo();
+    var name = cat.items[idx].name;
+    cat.items.splice(idx, 1);
+    save();
+
+    var card = app.querySelector('.card[data-id="' + catId + '"]');
+    if (card) {
+      var li = card.querySelector('.item[data-id="' + itemId + '"]');
+      if (li) li.remove();
+      if (!cat.items.length && !card.querySelector('.empty')) {
+        card.querySelector('.card-body').insertBefore(
+          el('p', 'empty', 'Sin productos. Agrega uno aquí abajo.'),
+          card.querySelector('.add')
+        );
+      }
+    }
+    refresh();
+    toast('"' + name + '" eliminado.', 'Deshacer', undo);
+  }
+
+  /* ---------------- hoja inferior ---------------- */
+  function openSheet(title, sub) {
+    clearTimeout(hideSheetTimer);
+    lastFocus = document.activeElement;
+    document.getElementById('sheetTitle').textContent = title;
+    var subEl = document.getElementById('sheetSub');
+    subEl.textContent = sub || '';
+    subEl.style.display = sub ? '' : 'none';
+    sheetBody.textContent = '';
+    scrim.hidden = false;
+    sheet.scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function () { scrim.classList.add('open'); });
+    return sheetBody;
+  }
+  function closeSheet() {
+    scrim.classList.remove('open');
+    document.body.style.overflow = '';
+    clearTimeout(hideSheetTimer);
+    hideSheetTimer = setTimeout(function () {
+      scrim.hidden = true;
+      sheetBody.textContent = '';
+    }, 260);
+    try { if (lastFocus && lastFocus.isConnected && lastFocus.focus) lastFocus.focus(); } catch (e) {}
+  }
+  scrim.addEventListener('click', function (e) { if (e.target === scrim) closeSheet(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !scrim.hidden) closeSheet(); });
+
+  /* El tabulador se queda dentro de la hoja mientras está abierta */
+  sheet.addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab') return;
+    var nodes = sheet.querySelectorAll('button, input, textarea, select, a[href]');
+    var f = Array.prototype.filter.call(nodes, function (n) {
+      return !n.disabled && n.offsetParent !== null;
+    });
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  function field(labelText, node) {
+    var f = el('div', 'field');
+    f.appendChild(el('label', null, labelText));
+    f.appendChild(node);
+    return f;
+  }
+
+  /* Última red de seguridad: el texto queda a la vista, listo para copiar a mano */
+  function openManualSheet(text) {
+    var body = openSheet('Copia manual', 'El navegador no dejó copiar automáticamente. Mantén presionado el texto y elige Copiar.');
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.readOnly = true;
+    ta.style.minHeight = '220px';
+    ta.setAttribute('aria-label', 'Texto para copiar');
+    body.appendChild(ta);
+
+    var actions = el('div', 'sheet-actions');
+    if (navigator.share) {
+      var sh = el('button', 'primary', 'Compartir');
+      sh.type = 'button';
+      sh.addEventListener('click', function () {
+        navigator.share({ text: text }).then(closeSheet, function () {});
+      });
+      actions.appendChild(sh);
+    }
+    var sel = el('button', 'secondary', 'Seleccionar todo');
+    sel.type = 'button';
+    sel.addEventListener('click', function () { ta.focus(); ta.setSelectionRange(0, text.length); });
+    var close = el('button', 'destructive', 'Cerrar');
+    close.type = 'button';
+    close.addEventListener('click', closeSheet);
+    actions.appendChild(sel); actions.appendChild(close);
+    body.appendChild(actions);
+  }
+
+  /* ---------------- categorías ---------------- */
+  function openCategorySheet(cat) {
+    var editing = !!cat;
+    var body = openSheet(editing ? 'Editar categoría' : 'Nueva categoría',
+                         editing ? null : 'Aparecerá al final de la lista.');
+
+    var row = el('div', 'field-row');
+    var emojiIn = document.createElement('input');
+    emojiIn.type = 'text'; emojiIn.className = 'emoji-in';
+    emojiIn.value = editing ? cat.emoji : '🧺';
+    emojiIn.setAttribute('aria-label', 'Emoji');
+    var nameIn = document.createElement('input');
+    nameIn.type = 'text';
+    nameIn.placeholder = 'Nombre de la categoría';
+    nameIn.value = editing ? cat.name : '';
+    nameIn.setAttribute('aria-label', 'Nombre de la categoría');
+    row.appendChild(emojiIn); row.appendChild(nameIn);
+    body.appendChild(field('Emoji y nombre', row));
+
+    var chosen = editing ? cat.accent : PALETTE[model.categories.length % PALETTE.length];
+    var sw = el('div', 'swatches');
+    PALETTE.forEach(function (color) {
+      var b = el('button', 'swatch');
+      b.type = 'button';
+      b.style.setProperty('--accent-base', color);
+      b.style.background = color;
+      b.setAttribute('aria-label', 'Color ' + color);
+      b.setAttribute('aria-pressed', color === chosen ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        chosen = color;
+        sw.querySelectorAll('.swatch').forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+        b.setAttribute('aria-pressed', 'true');
+      });
+      sw.appendChild(b);
+    });
+    body.appendChild(field('Color', sw));
+
+    if (editing && model.categories.length > 1) {
+      var pos = model.categories.indexOf(cat);
+      var moveWrap = el('div', 'move');
+      var up = el('button', 'secondary', '↑ Subir');
+      up.type = 'button'; up.disabled = pos === 0;
+      var down = el('button', 'secondary', '↓ Bajar');
+      down.type = 'button'; down.disabled = pos === model.categories.length - 1;
+      var moveTo = function (newPos) {
+        pushUndo();
+        model.categories.splice(pos, 1);
+        model.categories.splice(newPos, 0, cat);
+        save(); render(); closeSheet();
+        toast('Orden actualizado.', 'Deshacer', undo);
+      };
+      up.addEventListener('click', function () { moveTo(pos - 1); });
+      down.addEventListener('click', function () { moveTo(pos + 1); });
+      moveWrap.appendChild(up); moveWrap.appendChild(down);
+      body.appendChild(field('Posición', moveWrap));
+    }
+
+    var actions = el('div', 'sheet-actions');
+    var okBtn = el('button', 'primary', editing ? 'Guardar cambios' : 'Crear categoría');
+    okBtn.type = 'button';
+    okBtn.addEventListener('click', function () {
+      var name = nameIn.value.trim();
+      if (!name) { nameIn.focus(); return; }
+      var emoji = splitEmoji(emojiIn.value).emoji || emojiIn.value.trim() || '🧺';
+      pushUndo();
+      if (editing) {
+        cat.name = name; cat.emoji = emoji; cat.accent = chosen;
+      } else {
+        model.categories.push({ id: nid(), name: name, emoji: emoji, accent: chosen, collapsed: false, items: [] });
+      }
+      save(); render(); closeSheet();
+      toast(editing ? 'Categoría actualizada.' : 'Categoría creada.');
+    });
+    actions.appendChild(okBtn);
+
+    if (editing) {
+      var delBtn = el('button', 'destructive', 'Eliminar categoría');
+      delBtn.type = 'button';
+      delBtn.addEventListener('click', function () {
+        var n = cat.items.length;
+        if (n && !confirm('"' + cat.name + '" tiene ' + plural(n, 'producto', 'productos') + '. ¿Eliminar la categoría completa?')) return;
+        pushUndo();
+        model.categories = model.categories.filter(function (c) { return c.id !== cat.id; });
+        save(); render(); closeSheet();
+        toast('"' + cat.name + '" eliminada.', 'Deshacer', undo);
+      });
+      actions.appendChild(delBtn);
+    }
+
+    var cancel = el('button', 'secondary', 'Cancelar');
+    cancel.type = 'button';
+    cancel.addEventListener('click', closeSheet);
+    actions.appendChild(cancel);
+
+    body.appendChild(actions);
+    setTimeout(function () { nameIn.focus(); }, 140);
+  }
+
+  /* ---------------- importar y exportar ---------------- */
+  function serialize(onlyPending) {
+    var blocks = [];
+    model.categories.forEach(function (cat) {
+      var lines = [];
+      cat.items.forEach(function (it) {
+        if (onlyPending && it.done) return;
+        lines.push(onlyPending ? '- ' + it.name : (it.done ? '- [x] ' : '- ') + it.name);
+      });
+      if (lines.length) blocks.push(cat.emoji + ' ' + cat.name + '\n' + lines.join('\n'));
+    });
+    return blocks.join('\n\n');
+  }
+
+  function parseList(text) {
+    var cats = [], cur = null, sawBullet = false;
+
+    text.split(/\r?\n/).forEach(function (raw) {
+      var line = raw.trim();
+      if (!line) return;
+      var m = line.match(/^[-*•·–—]\s*(.+)$/);
+      if (m) {
+        sawBullet = true;
+        var content = m[1].trim();
+        var done = false;
+        var c = content.match(/^\[\s*([xX ])\s*\]\s*(.+)$/);
+        if (c) { done = c[1].toLowerCase() === 'x'; content = c[2].trim(); }
+        if (!cur) { cur = { emoji: '🧺', name: 'Lista', items: [] }; cats.push(cur); }
+        cur.items.push({ id: nid(), name: content, done: done });
+      } else {
+        var head = splitEmoji(line.replace(/^#+\s*/, '').replace(/[:：]\s*$/, ''));
+        cur = { emoji: head.emoji || '🧺', name: head.name || 'Categoría', items: [] };
+        cats.push(cur);
+      }
+    });
+
+    /* Sin viñetas: los encabezados son las líneas con # o que terminan en dos puntos */
+    if (!sawBullet) {
+      cats = []; cur = null;
+      text.split(/\r?\n/).forEach(function (raw) {
+        var line = raw.trim();
+        if (!line) return;
+        var isHead = /^#+\s*/.test(line) || /[:：]\s*$/.test(line);
+        if (isHead) {
+          var h = splitEmoji(line.replace(/^#+\s*/, '').replace(/[:：]\s*$/, ''));
+          cur = { emoji: h.emoji || '🧺', name: h.name || 'Categoría', items: [] };
+          cats.push(cur);
+        } else {
+          if (!cur) { cur = { emoji: '🧺', name: 'Lista', items: [] }; cats.push(cur); }
+          var p = line.match(/^\[\s*([xX ])\s*\]\s*(.+)$/);
+          cur.items.push(p
+            ? { id: nid(), name: p[2].trim(), done: p[1].toLowerCase() === 'x' }
+            : { id: nid(), name: line, done: false });
+        }
+      });
+    }
+
+    return cats.filter(function (c) { return c.items.length; }).map(function (c, i) {
+      return { id: nid(), name: c.name, emoji: c.emoji, accent: PALETTE[i % PALETTE.length], collapsed: false, items: c.items };
+    });
+  }
+
+  function openImportSheet() {
+    var body = openSheet('Importar lista', 'Una línea suelta abre una categoría. Las líneas con guion son productos. Usa [x] para marcar algo ya comprado.');
+
+    var ta = document.createElement('textarea');
+    ta.placeholder = '🛒 Supermercado\n- Leche\n- [x] Pan\n\n🥬 Plaza\n- Limón\n- Tomate';
+    ta.setAttribute('aria-label', 'Lista en texto');
+    body.appendChild(field('Pega tu lista', ta));
+
+    var actions = el('div', 'sheet-actions');
+
+    var replace = el('button', 'primary', 'Reemplazar la lista');
+    replace.type = 'button';
+    replace.addEventListener('click', function () {
+      var cats = parseList(ta.value);
+      if (!cats.length) { toast('No se encontró ningún producto en ese texto.'); ta.focus(); return; }
+      var n = 0;
+      cats.forEach(function (c) { n += c.items.length; });
+      if (!confirm('Se reemplazará toda la lista actual por ' + plural(cats.length, 'categoría', 'categorías') + ' y ' + plural(n, 'producto', 'productos') + '. ¿Continuar?')) return;
+      pushUndo();
+      model.categories = cats;
+      save(); render(); closeSheet();
+      toast('Lista importada.', 'Deshacer', undo);
+    });
+
+    var append = el('button', 'secondary', 'Agregar a la lista actual');
+    append.type = 'button';
+    append.addEventListener('click', function () {
+      var cats = parseList(ta.value);
+      if (!cats.length) { toast('No se encontró ningún producto en ese texto.'); ta.focus(); return; }
+      pushUndo();
+      var added = 0;
+      cats.forEach(function (nc) {
+        var same = null;
+        model.categories.forEach(function (c) {
+          if (c.name.toLowerCase() === nc.name.toLowerCase()) same = c;
+        });
+        if (same) {
+          nc.items.forEach(function (it) {
+            var dup = same.items.some(function (o) { return o.name.toLowerCase() === it.name.toLowerCase(); });
+            if (!dup) { same.items.push(it); added++; }
+          });
+        } else {
+          nc.accent = PALETTE[model.categories.length % PALETTE.length];
+          model.categories.push(nc);
+          added += nc.items.length;
+        }
+      });
+      save(); render(); closeSheet();
+      toast(added ? plural(added, 'producto agregado', 'productos agregados') + '.' : 'Todo eso ya estaba en la lista.', 'Deshacer', undo);
+    });
+
+    var cancel = el('button', 'destructive', 'Cancelar');
+    cancel.type = 'button';
+    cancel.addEventListener('click', closeSheet);
+
+    actions.appendChild(replace); actions.appendChild(append); actions.appendChild(cancel);
+    body.appendChild(actions);
+    setTimeout(function () { ta.focus(); }, 140);
+  }
+
+  /* ---------------- acciones generales ---------------- */
+  document.getElementById('newCat').addEventListener('click', function () { openCategorySheet(null); });
+  document.getElementById('importBtn').addEventListener('click', openImportSheet);
+
+  var shareBtn = document.getElementById('shareBtn');
+  if (navigator.share) {
+    shareBtn.hidden = false;
+    shareBtn.addEventListener('click', function () {
+      var text = serialize(true);
+      if (!text) { toast('No falta nada por comprar.'); return; }
+      navigator.share({ title: 'Lista de mercado', text: text }).then(
+        function () { flashOk(shareBtn, '¡Compartido!'); },
+        function () {}
+      );
+    });
+  }
+
+  var copyPending = document.getElementById('copyPending');
+  copyPending.addEventListener('click', function () {
+    var text = serialize(true);
+    if (!text) { toast('No falta nada por comprar.'); return; }
+    copyText(text, 'Copiado lo que falta.', copyPending);
+  });
+
+  var exportBtn = document.getElementById('exportBtn');
+  exportBtn.addEventListener('click', function () {
+    var text = serialize(false);
+    if (!text) { toast('La lista está vacía.'); return; }
+    copyText(text, 'Lista copiada en formato de importación.', exportBtn);
+  });
+
+  document.getElementById('uncheckAll').addEventListener('click', function () {
+    var any = model.categories.some(function (c) { return c.items.some(function (i) { return i.done; }); });
+    if (!any) { toast('Nada marcado todavía.'); return; }
+    pushUndo();
+    model.categories.forEach(function (c) { c.items.forEach(function (i) { i.done = false; }); });
+    save(); render();
+    toast('Lista desmarcada.', 'Deshacer', undo);
+  });
+
+  document.getElementById('removeDone').addEventListener('click', function () {
+    var n = 0;
+    model.categories.forEach(function (c) { c.items.forEach(function (i) { if (i.done) n++; }); });
+    if (!n) { toast('No hay productos comprados.'); return; }
+    pushUndo();
+    model.categories.forEach(function (c) {
+      c.items = c.items.filter(function (i) { return !i.done; });
+    });
+    save(); render();
+    toast(plural(n, 'producto eliminado', 'productos eliminados') + '.', 'Deshacer', undo);
+  });
+
+  document.getElementById('restore').addEventListener('click', function () {
+    if (!confirm('Se descartará la lista actual, incluidas las categorías importadas, y volverá la lista original. ¿Continuar?')) return;
+    pushUndo();
+    var theme = model.theme;
+    model = clone(SEED);
+    model.theme = theme;
+    save(); render();
+    toast('Lista original restaurada.', 'Deshacer', undo);
+  });
+
+  /* ---------------- arranque ---------------- */
+  model = load() || clone(SEED);
+  if (!model.theme) model.theme = 'auto';
+  applyTheme(model.theme);
+  render();
+})();
+</script>
+</body>
+</html>
