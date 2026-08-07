@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101216" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chimichurri">
+<meta name="author" content="Luis Alejandro Jaramillo">
+<meta name="description" content="Chimichurri paso a paso, con cantidades a la mano, temporizadores y avance que se va marcando mientras cocinas.">
+<title>🌿 Chimichurri</title>
+<script>
+  /* Aplica el tema guardado antes de pintar, para evitar el parpadeo blanco */
+  try {
+    var t = localStorage.getItem('recetas.theme');
+    document.documentElement.setAttribute('data-theme', t || 'auto');
+  } catch (e) {}
+</script>
+<style>
+  /* ---------------- Tokens ---------------- */
+  :root{
+    color-scheme:light;
+    --bg:#F4F5F7;
+    --card:#FFFFFF;
+    --card-soft:#FAFBFC;
+    --text:#12161C;
+    --text-2:#454C55;
+    --muted:#767D87;
+    --line:#E9ECEF;
+    --track:#DFE3E8;
+    --green:#0F8A5B;
+    --red:#C93B31;
+    --toast-bg:#181C22;
+    --toast-text:#FFFFFF;
+    --toast-action:#5FE0A8;
+    --seg-bg:#E7EAEE;
+    --seg-thumb:#FFFFFF;
+    --on-accent:#FFFFFF;
+    --tint:rgba(18,22,28,.06);
+    --radius:20px;
+    --shadow:0 1px 2px rgba(18,22,28,.05), 0 10px 30px rgba(18,22,28,.06);
+    --blur:rgba(244,245,247,.82);
+    --pad:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --bg:#101216;
+      --card:#1A1E24;
+      --card-soft:#20242B;
+      --text:#F2F4F7;
+      --text-2:#C7CDD5;
+      --muted:#98A0AA;
+      --line:#272C34;
+      --track:#333944;
+      --green:#3BD190;
+      --red:#FF7166;
+      --toast-bg:#2B313A;
+      --toast-text:#F2F4F7;
+      --toast-action:#5FE0A8;
+      --seg-bg:#272C34;
+      --seg-thumb:#3A414C;
+      --on-accent:#08150F;
+      --tint:rgba(255,255,255,.09);
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+      --blur:rgba(16,18,22,.82);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#101216;
+    --card:#1A1E24;
+    --card-soft:#20242B;
+    --text:#F2F4F7;
+    --text-2:#C7CDD5;
+    --muted:#98A0AA;
+    --line:#272C34;
+    --track:#333944;
+    --green:#3BD190;
+    --red:#FF7166;
+    --toast-bg:#2B313A;
+    --toast-text:#F2F4F7;
+    --toast-action:#5FE0A8;
+    --seg-bg:#272C34;
+    --seg-thumb:#3A414C;
+    --on-accent:#08150F;
+    --tint:rgba(255,255,255,.09);
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.3);
+    --blur:rgba(16,18,22,.82);
+  }
+
+  /* Acento de la receta. En oscuro se aclara para que el texto siga legible. */
+  body{--accent-base:#5A9B2E;--accent:var(--accent-base)}
+  @supports (color: color-mix(in srgb, red 50%, white)){
+    @media (prefers-color-scheme: dark){
+      :root:not([data-theme="light"]) body{--accent:color-mix(in srgb, var(--accent-base) 62%, #FFFFFF)}
+    }
+    :root[data-theme="dark"] body{--accent:color-mix(in srgb, var(--accent-base) 62%, #FFFFFF)}
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:17px;line-height:1.35;overflow-x:hidden;
+    padding-bottom:calc(24px + env(safe-area-inset-bottom));
+  }
+  .wrap{
+    max-width:750px;margin:0 auto;
+    padding-left:calc(var(--pad) + env(safe-area-inset-left));
+    padding-right:calc(var(--pad) + env(safe-area-inset-right));
+  }
+  button{font:inherit}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+  /* ---------------- Cabecera ---------------- */
+  .topbar{
+    position:sticky;top:0;z-index:30;
+    background:var(--blur);
+    backdrop-filter:saturate(180%) blur(20px);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:1px solid var(--line);
+    padding:calc(12px + env(safe-area-inset-top)) 0 13px;
+  }
+  .nav-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .back{
+    display:inline-flex;align-items:center;gap:2px;min-height:32px;
+    color:var(--muted);text-decoration:none;font-size:15px;font-weight:600;
+    transition:color .15s ease;
+  }
+  .back:active{color:var(--text)}
+  .theme{display:flex;gap:2px;background:var(--seg-bg);border-radius:11px;padding:2px;flex:0 0 auto}
+  .theme button{
+    border:0;background:transparent;color:var(--muted);border-radius:9px;
+    width:clamp(30px,9vw,36px);height:30px;font-size:14px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s ease,color .15s ease;
+  }
+  .theme button[aria-pressed="true"]{background:var(--seg-thumb);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  h1{font-size:clamp(21px,5.6vw,27px);line-height:1.1;font-weight:700;letter-spacing:-.024em;margin:0 0 10px}
+  .status{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 9px}
+  .status p{margin:0;font-size:15px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .status strong{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+  .pct{font-size:15px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap;flex:0 0 auto}
+  .bar{height:9px;background:var(--track);border-radius:99px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0%;border-radius:99px;background:var(--accent);
+         transition:width .32s cubic-bezier(.32,.72,0,1)}
+
+  /* ---------------- Ficha ---------------- */
+  ul.meta{display:flex;flex-wrap:wrap;gap:7px;list-style:none;margin:16px 0 0;padding:0}
+  ul.meta li{
+    font-size:13.5px;font-weight:600;color:var(--text-2);
+    background:var(--card);border-radius:99px;padding:6px 12px;box-shadow:var(--shadow);
+  }
+
+  /* ---------------- Tarjetas ---------------- */
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin:16px 0;overflow:hidden}
+  h2.card-head{margin:0;font-size:inherit;font-weight:inherit;display:flex}
+  .head-main{
+    flex:1;min-width:0;display:flex;align-items:center;gap:11px;
+    border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;
+    padding:15px 14px;min-height:64px;-webkit-user-select:none;user-select:none;
+    transition:background .15s ease;
+  }
+  .head-main:active{background:var(--card-soft)}
+  .emoji{
+    flex:0 0 auto;width:34px;height:34px;border-radius:11px;font-size:18px;
+    background:var(--tint);display:flex;align-items:center;justify-content:center;
+  }
+  .head-title{flex:1;min-width:0;font-size:16px;font-weight:650;letter-spacing:-.01em;
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s ease}
+  .count{
+    flex:0 0 auto;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;
+    color:var(--accent);background:var(--tint);
+    border-radius:99px;padding:5px 11px;white-space:nowrap;
+  }
+  .card.complete .count{color:var(--on-accent);background:var(--accent)}
+  /* Punta hacia abajo cuando está abierta, hacia arriba cuando está guardada */
+  .chev{
+    flex:0 0 auto;width:10px;height:10px;border:solid var(--muted);border-width:0 2px 2px 0;
+    transform:rotate(45deg);margin:-4px 2px 0 2px;transition:transform .2s ease;
+  }
+  .card.collapsed .chev{transform:rotate(-45deg);margin-top:2px}
+  .card.collapsed .card-body{display:none}
+  @supports (background: color-mix(in srgb, red 50%, transparent)){
+    .emoji{background:color-mix(in srgb, var(--accent) 15%, transparent)}
+    .count{background:color-mix(in srgb, var(--accent) 13%, transparent)}
+    .card.complete .count{background:var(--accent)}
+  }
+
+  /* ---------------- Ingredientes ---------------- */
+  ul.items{list-style:none;margin:0;padding:0}
+  .item{display:flex;align-items:center;border-top:1px solid var(--line);transition:background .15s ease}
+  .row{
+    flex:1;min-width:0;display:flex;align-items:center;gap:14px;
+    padding:13px 16px;min-height:56px;cursor:pointer;
+    -webkit-user-select:none;user-select:none;
+  }
+  .chk{position:absolute;opacity:0;width:0;height:0}
+  .box{
+    flex:0 0 auto;width:27px;height:27px;border-radius:50%;
+    border:2px solid var(--track);background:transparent;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:background .16s ease,border-color .16s ease,transform .16s ease;
+  }
+  .box::after{
+    content:"";width:7px;height:13px;margin-top:-3px;
+    border:solid #fff;border-width:0 2.5px 2.5px 0;
+    transform:rotate(45deg) scale(.4);opacity:0;
+    transition:transform .16s cubic-bezier(.34,1.56,.64,1),opacity .16s ease;
+  }
+  .chk:checked + .box{background:var(--accent);border-color:var(--accent)}
+  .chk:checked + .box::after{opacity:1;transform:rotate(45deg) scale(1)}
+  .row:active .box{transform:scale(.9)}
+  .chk:focus-visible + .box{outline:2px solid var(--green);outline-offset:3px}
+  .name{flex:1;min-width:0;overflow-wrap:anywhere;transition:color .16s ease}
+  .name b{font-weight:650}
+  .item.done{background:var(--card-soft)}
+  .item.done .name{text-decoration:line-through;color:var(--muted)}
+
+  .listfoot{border-top:1px solid var(--line);background:var(--card-soft);padding:6px}
+  .linkbtn{
+    display:block;width:100%;min-height:46px;border:0;border-radius:14px;background:transparent;
+    color:var(--accent);font-size:15.5px;font-weight:650;cursor:pointer;
+    transition:background .15s ease;
+  }
+  .linkbtn:active{background:var(--tint)}
+
+  /* ---------------- Paso a paso ---------------- */
+  ol.steps{list-style:none;margin:0;padding:0}
+  .step{border-top:1px solid var(--line)}
+  .step-row{
+    display:flex;align-items:flex-start;gap:14px;width:100%;
+    padding:15px 16px;border:0;background:transparent;color:inherit;
+    text-align:left;cursor:pointer;-webkit-user-select:none;user-select:none;
+    transition:background .15s ease;
+  }
+  .step-row:active{background:var(--card-soft)}
+  /* Franja de acento a la izquierda del paso en el que voy */
+  .step.current{background:var(--card-soft);box-shadow:inset 3px 0 0 var(--accent)}
+  .num{
+    flex:0 0 auto;width:29px;height:29px;margin-top:1px;border-radius:50%;
+    border:2px solid var(--track);background:transparent;color:var(--muted);
+    font-size:14px;font-weight:650;font-variant-numeric:tabular-nums;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease;
+  }
+  .step.current .num{border-color:var(--accent);color:var(--accent)}
+  .step.done .num{background:var(--accent);border-color:var(--accent);color:transparent;font-size:0}
+  .step.done .num::after{
+    content:"";width:7px;height:13px;margin-top:-3px;
+    border:solid var(--on-accent);border-width:0 2.5px 2.5px 0;transform:rotate(45deg);
+  }
+  .step-row:active .num{transform:scale(.9)}
+  .step-main{flex:1;min-width:0;display:block}
+  .step-title{display:block;font-size:16px;font-weight:650;letter-spacing:-.01em;overflow-wrap:anywhere;
+              transition:color .16s ease}
+  .step-detail{
+    display:block;margin-top:5px;font-size:15px;line-height:1.45;color:var(--text-2);
+    overflow-wrap:anywhere;
+  }
+  /* El paso actual se lee un punto más grande, para verlo de lejos en la cocina */
+  .step.current .step-title{font-size:17px}
+  .step.current .step-detail{font-size:16px;color:var(--text)}
+  /* Las cantidades quedan dentro del paso, para no devolverse a la lista */
+  .amt{font-weight:700;color:var(--accent)}
+  /* Los pasos hechos se encogen y dejan a la vista lo que falta */
+  .step.done .step-title{text-decoration:line-through;color:var(--muted);font-weight:600}
+  .step.done .step-detail,.step.done .step-tools{display:none}
+
+  .step-tools{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 15px 59px}
+  .timer{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    min-height:44px;padding:0 15px;border:1px solid var(--line);border-radius:13px;
+    background:var(--card-soft);color:var(--text-2);
+    font-size:14.5px;font-weight:650;font-variant-numeric:tabular-nums;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease,color .15s ease;
+  }
+  .timer.running{border-color:var(--accent);color:var(--accent);background:var(--tint)}
+  .timer.rang{border-color:var(--green);color:var(--green);background:var(--tint);animation:ring 1s ease-in-out 3}
+  @keyframes ring{0%,100%{transform:none}25%{transform:rotate(-3deg)}75%{transform:rotate(3deg)}}
+
+  .banner{
+    margin:0;padding:16px;border-top:1px solid var(--line);background:var(--card-soft);
+    text-align:center;font-size:16px;font-weight:650;color:var(--accent);
+  }
+  .banner[hidden]{display:none}
+
+  /* ---------------- Trucos y notas ---------------- */
+  .tip{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    margin:16px 0;padding:17px 18px;border-left:4px solid var(--accent);
+  }
+  .tip h2{margin:0 0 6px;font-size:15px;font-weight:650;color:var(--accent);letter-spacing:-.01em}
+  .tip p{margin:0;font-size:15.5px;line-height:1.5;color:var(--text-2)}
+  .tip h3{margin:16px 0 8px;padding-top:14px;border-top:1px solid var(--line);
+          font-size:13px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .tip ul{margin:0;padding-left:20px}
+  .tip li{margin:0 0 8px;font-size:15px;line-height:1.5;color:var(--text-2)}
+  .tip li:last-child{margin-bottom:0}
+  .tip li b{color:var(--text);font-weight:650}
+
+  /* ---------------- Menú de acciones ---------------- */
+  .menu{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin:22px 0 0}
+  .menu button{
+    display:flex;align-items:center;gap:13px;width:100%;padding:15px 16px;
+    border:0;border-top:1px solid var(--line);background:transparent;color:var(--text);
+    font-size:16px;text-align:left;cursor:pointer;transition:color .15s ease,background .15s ease;
+  }
+  .menu button:first-child{border-top:0}
+  .menu button:active{background:var(--card-soft)}
+  .menu button[hidden]{display:none}
+  .menu .ico{
+    flex:0 0 auto;width:30px;height:30px;border-radius:9px;background:var(--card-soft);
+    border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:15px;
+    transition:background .15s ease,border-color .15s ease,color .15s ease;
+  }
+  .menu .danger{color:var(--red)}
+  .menu button.ok{color:var(--green);font-weight:650}
+  .menu button.ok .ico{background:var(--tint);border-color:transparent;color:var(--green)}
+  .menu button[aria-pressed="true"]{color:var(--accent);font-weight:650}
+  .menu button[aria-pressed="true"] .ico{background:var(--tint);border-color:transparent;color:var(--accent)}
+  .note{margin:14px 0 0;text-align:center;font-size:13px;color:var(--muted);line-height:1.5}
+
+  /* ---------------- Créditos ---------------- */
+  .credit{margin-top:26px;text-align:center}
+  .credit p{margin:0;font-size:12px;color:var(--muted);line-height:1.6}
+  .credit .sep{opacity:.5;padding:0 6px}
+
+  /* ---------------- Aviso ---------------- */
+  .toast{
+    position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));
+    transform:translate(-50%,16px);display:flex;align-items:center;gap:14px;
+    background:var(--toast-bg);color:var(--toast-text);font-size:15px;
+    padding:13px 15px 13px 18px;border-radius:16px;opacity:0;pointer-events:none;z-index:80;
+    max-width:min(560px, calc(100% - 32px));transition:opacity .2s ease,transform .2s ease;
+    box-shadow:0 12px 32px rgba(0,0,0,.3);
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .toast button{
+    flex:0 0 auto;border:0;background:transparent;color:var(--toast-action);
+    font-weight:650;cursor:pointer;padding:4px 6px;
+  }
+  .toast button[hidden]{display:none}
+
+  /* ---------------- Pantallas angostas ---------------- */
+  @media (max-width:359px){
+    :root{--pad:12px}
+    .row,.step-row{padding-left:14px;padding-right:14px;gap:12px}
+    .step-tools{padding-left:57px;padding-right:14px}
+    .head-main{padding-left:12px;padding-right:12px}
+    .menu button{padding:14px 13px;gap:11px}
+    .count{padding:4px 9px;font-size:13px}
+  }
+
+  /* ---------------- Escritorio ---------------- */
+  @media (min-width:760px){
+    body{padding-bottom:40px}
+    .topbar{padding-top:20px}
+    .card{margin:18px 0}
+  }
+  @media (hover:hover) and (pointer:fine){
+    .item:hover{background:var(--card-soft)}
+    .linkbtn:hover{background:var(--tint)}
+    .step-row:hover{background:var(--card-soft)}
+    .step-row:hover .step-title{color:var(--accent)}
+    .step.done .step-row:hover .step-title{color:var(--muted)}
+    .timer:hover{border-color:var(--accent);color:var(--accent)}
+    .head-main:hover{background:var(--card-soft)}
+    .head-main:hover .head-title{color:var(--accent)}
+    .menu button:hover{background:var(--card-soft)}
+    .back:hover{color:var(--text)}
+    .theme button:hover{color:var(--text)}
+  }
+
+  /* ---------------- Impresión ---------------- */
+  @media print{
+    body{background:#fff;color:#000;padding:0}
+    .topbar{position:static;background:none;border:0;backdrop-filter:none}
+    .theme,.menu,.note,.toast,.back,.banner,.chev,.listfoot,.step-tools{display:none!important}
+    .card,.tip{box-shadow:none;border:1px solid #ccc;break-inside:avoid;page-break-inside:avoid}
+    .card.collapsed .card-body{display:block}
+    .step.done .step-detail{display:block}
+    .credit p{color:#666}
+  }
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="nav-row">
+      <a class="back" href="index.html">‹ Recetas</a>
+      <div class="theme" role="group" aria-label="Apariencia">
+        <button type="button" data-theme-btn="auto" aria-pressed="true" title="Automático" aria-label="Apariencia automática">A</button>
+        <button type="button" data-theme-btn="light" aria-pressed="false" title="Claro" aria-label="Modo claro">☀</button>
+        <button type="button" data-theme-btn="dark" aria-pressed="false" title="Oscuro" aria-label="Modo oscuro">☾</button>
+      </div>
+    </div>
+    <h1>🌿 Chimichurri</h1>
+    <div class="status">
+      <p id="stepLabel">Vas en el paso <strong>1</strong> de <span id="stepTotal">10</span></p>
+      <span class="pct" id="pctLabel">0%</span>
+    </div>
+    <div class="bar" role="progressbar" aria-label="Avance de la receta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><i></i></div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <ul class="meta">
+    <li>⏱ 35 min</li>
+    <li>😴 30 min de reposo</li>
+    <li>🔪 Fácil</li>
+    <li>🫙 Rinde ~2 tazas</li>
+    <li>🥩 Para el asado</li>
+  </ul>
+
+  <section class="card" id="ingCard">
+    <h2 class="card-head">
+      <button class="head-main" type="button" data-sec="ing" aria-expanded="true" aria-controls="ingBody">
+        <span class="emoji">🧺</span>
+        <span class="head-title">Ingredientes</span>
+        <span class="count" id="ingCount">0/8</span>
+        <i class="chev"></i>
+      </button>
+    </h2>
+    <div class="card-body" id="ingBody">
+      <ul class="items" id="ingList">
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name"><b>½ pimentón</b>, para asar</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name"><b>1 taza (250 ml)</b> de aceite de oliva</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name"><b>1 cucharadita</b> de sal, al gusto</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name"><b>½ cucharadita</b> de pimienta</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name"><b>1 manojo pequeño</b> de perejil liso</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name"><b>1 manojo pequeño</b> de cilantro</span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name"><b>½ cebolla cabezona</b></span></label></li>
+        <li class="item"><label class="row"><input type="checkbox" class="chk"><span class="box"></span><span class="name"><b>4 dientes</b> de ajo</span></label></li>
+      </ul>
+      <div class="listfoot">
+        <button class="linkbtn" type="button" id="allIng">Marcar todos</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="stepCard">
+    <h2 class="card-head">
+      <button class="head-main" type="button" data-sec="step" aria-expanded="true" aria-controls="stepBody">
+        <span class="emoji">👨‍🍳</span>
+        <span class="head-title">Paso a paso</span>
+        <span class="count" id="stepCount">0/10</span>
+        <i class="chev"></i>
+      </button>
+    </h2>
+    <div class="card-body" id="stepBody">
+      <ol class="steps" id="stepList">
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">1</span>
+            <span class="step-main">
+              <span class="step-title">Asa el pimentón</span>
+              <span class="step-detail"><span class="amt">½ pimentón</span> directo sobre la llama de la estufa, o al horno a <span class="amt">220 °C</span>. Voltéalo cada tanto hasta que la piel quede negra y ampollada por todos lados. Asarlo le saca el dulce y le quita el sabor a crudo.</span>
+            </span>
+          </button>
+          <div class="step-tools"><button class="timer" type="button" data-min="12" data-label="12 min">⏱ 12 min</button></div>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">2</span>
+            <span class="step-main">
+              <span class="step-title">Tápalo para que sude</span>
+              <span class="step-detail">Pásalo caliente a un bol y tápalo con un plato. El vapor despega la piel y después sale sola con los dedos. Aprovecha el rato para lavar y <b>secar muy bien</b> el perejil y el cilantro.</span>
+            </span>
+          </button>
+          <div class="step-tools"><button class="timer" type="button" data-min="10" data-label="10 min">⏱ 10 min</button></div>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">3</span>
+            <span class="step-main">
+              <span class="step-title">El aceite va primero</span>
+              <span class="step-detail">Sirve <span class="amt">1 taza (250 ml)</span> de aceite de oliva en un tazón hondo, el mismo donde vas a armar todo. Debe alcanzar a cubrir lo que piques; si al final lo quieres más suelto, le sumas otro chorrito.</span>
+            </span>
+          </button>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">4</span>
+            <span class="step-main">
+              <span class="step-title">Sazona el aceite, no las hierbas</span>
+              <span class="step-detail">Échale <span class="amt">1 cucharadita de sal</span> y <span class="amt">½ cucharadita de pimienta</span> al aceite solo, y revuelve hasta que se disuelvan. Sazonar desde el principio reparte el sabor parejo en toda la mezcla.</span>
+            </span>
+          </button>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">5</span>
+            <span class="step-main">
+              <span class="step-title">Perejil liso: pica y echa, pica y echa</span>
+              <span class="step-detail"><span class="amt">1 manojo pequeño</span>, como <span class="amt">1 taza</span> ya picado. Picas un puñado, lo echas al aceite, revuelves y vuelves a la tabla. Nunca lo dejes acumulado esperando turno.</span>
+            </span>
+          </button>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">6</span>
+            <span class="step-main">
+              <span class="step-title">Cilantro, al mismo ritmo</span>
+              <span class="step-detail">Otro <span class="amt">manojo pequeño</span>, más o menos <span class="amt">1 taza</span> picada. Tandas pequeñas, directo al aceite, revolviendo cada vez que eches.</span>
+            </span>
+          </button>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">7</span>
+            <span class="step-main">
+              <span class="step-title">Ahora sí el pimentón</span>
+              <span class="step-detail">Pélalo, quítale semillas y venas, y pícalo menudo: te queda como <span class="amt">½ taza</span>. Va en dos o tres tandas, revolviendo entre una y otra.</span>
+            </span>
+          </button>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">8</span>
+            <span class="step-main">
+              <span class="step-title">Cebolla en cuadritos</span>
+              <span class="step-detail"><span class="amt">½ cebolla cabezona</span>, como <span class="amt">½ taza</span> picada, en cuadritos pequeños para que no se sienta a mordiscos. También de a poquitos y sin dejar de revolver.</span>
+            </span>
+          </button>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">9</span>
+            <span class="step-main">
+              <span class="step-title">El ajo, de último</span>
+              <span class="step-detail"><span class="amt">4 dientes</span> bien picados, más o menos <span class="amt">1 cucharada</span>. Échalos al final y revuelve con ganas para que se repartan por toda la mezcla.</span>
+            </span>
+          </button>
+        </li>
+
+        <li class="step">
+          <button class="step-row" type="button" aria-pressed="false">
+            <span class="num">10</span>
+            <span class="step-main">
+              <span class="step-title">Prueba, ajusta y deja reposar</span>
+              <span class="step-detail">Dale una última revuelta y prueba: con todo adentro el punto de sal cambia. Corrige, y déjalo reposar tapado <span class="amt">30 minutos</span> antes de servir. Ahí es cuando de verdad agarra sabor.</span>
+            </span>
+          </button>
+          <div class="step-tools"><button class="timer" type="button" data-min="30" data-label="30 min">⏱ 30 min</button></div>
+        </li>
+
+      </ol>
+      <p class="banner" id="banner" hidden>¡Chimichurri listo! 🎉</p>
+    </div>
+  </section>
+
+  <section class="tip">
+    <h2>El truco de esta receta</h2>
+    <p>No piques todo de una sola. Ve picando y echando de a poquitos, revolviendo a medida que avanzas: así queda mejor.</p>
+
+    <h3>Otras notas</h3>
+    <ul>
+      <li><b>Cuchillo, no procesador.</b> El procesador machaca las hierbas en vez de cortarlas: sueltan agua, se oscurecen y amargan.</li>
+      <li><b>Seca bien el perejil y el cilantro.</b> El agua no se mezcla con el aceite y le acorta la vida al chimichurri.</li>
+      <li><b>El ajo picado, no prensado.</b> Prensado suelta más jugo y se impone sobre todo lo demás.</li>
+      <li><b>Se guarda en frasco</b>, con el aceite cubriendo la mezcla y en la nevera. Aguanta cerca de una semana, y del segundo día en adelante sabe mejor.</li>
+      <li><b>Sácalo de la nevera un rato antes.</b> El aceite de oliva se espesa en frío y con el frío no se siente el sabor.</li>
+    </ul>
+  </section>
+
+  <div class="menu">
+    <button type="button" id="wakeBtn" aria-pressed="false" hidden><span class="ico">☕</span>Mantener la pantalla encendida</button>
+    <button type="button" id="shareBtn" hidden><span class="ico">📲</span>Compartir la receta</button>
+    <button type="button" id="copyBtn"><span class="ico">📝</span>Copiar la receta</button>
+    <button type="button" id="resetBtn" class="danger"><span class="ico">⟲</span>Empezar de nuevo</button>
+  </div>
+  <p class="note">Tu avance se guarda en este dispositivo.<br>Toca un paso para marcarlo, o el título de una sección para guardarla.</p>
+
+  <footer class="credit">
+    <p>© <span id="year">2026</span> Luis Alejandro Jaramillo<span class="sep">·</span>Todos los derechos reservados</p>
+  </footer>
+
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span id="toastText"></span>
+  <button type="button" id="toastAction" hidden>Deshacer</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'receta.chimichurri.v1';
+  var THEME_KEY = 'recetas.theme';
+
+  var ingList = document.getElementById('ingList');
+  var stepList = document.getElementById('stepList');
+  var ings = Array.prototype.slice.call(ingList.querySelectorAll('.item'));
+  var steps = Array.prototype.slice.call(stepList.querySelectorAll('.step'));
+
+  var ingCard = document.getElementById('ingCard');
+  var stepCard = document.getElementById('stepCard');
+  var barFill = document.querySelector('#bar i');
+  var banner = document.getElementById('banner');
+  var allIng = document.getElementById('allIng');
+  var toastEl = document.getElementById('toast');
+  var toastText = document.getElementById('toastText');
+  var toastAction = document.getElementById('toastAction');
+  var toastTimer, undoSnapshot = null;
+
+  document.getElementById('year').textContent = new Date().getFullYear();
+  document.getElementById('stepTotal').textContent = steps.length;
+  document.getElementById('ingCount').textContent = '0/' + ings.length;
+  document.getElementById('stepCount').textContent = '0/' + steps.length;
+
+  /* ---------------- modelo ---------------- */
+  function blank() {
+    return {
+      ing: ings.map(function () { return false; }),
+      step: steps.map(function () { return false; }),
+      col: { ing: false, step: false }
+    };
+  }
+  var state = blank();
+
+  function load() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+      /* Si la receta cambió de tamaño, el avance viejo ya no cuadra */
+      if (saved && saved.ing && saved.step &&
+          saved.ing.length === ings.length && saved.step.length === steps.length) {
+        return {
+          ing: saved.ing.map(Boolean),
+          step: saved.step.map(Boolean),
+          col: {
+            ing: !!(saved.col && saved.col.ing),
+            step: !!(saved.col && saved.col.step)
+          }
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { toast('No se pudo guardar en este navegador.'); }
+  }
+  function pushUndo() { undoSnapshot = JSON.parse(JSON.stringify(state)); }
+  function undo() {
+    if (!undoSnapshot) return;
+    state = undoSnapshot; undoSnapshot = null;
+    save(); paint();
+  }
+
+  /* ---------------- utilidades ---------------- */
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p); } catch (e) {} } }
+  function count(arr) {
+    var n = 0;
+    arr.forEach(function (v) { if (v) n++; });
+    return n;
+  }
+  function toast(msg, actionLabel, onAction) {
+    toastText.textContent = msg;
+    if (actionLabel) {
+      toastAction.textContent = actionLabel;
+      toastAction.hidden = false;
+      toastAction.onclick = function () { hideToast(); onAction(); };
+    } else {
+      toastAction.hidden = true;
+      toastAction.onclick = null;
+    }
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, actionLabel ? 6000 : 2400);
+  }
+  function hideToast() { toastEl.classList.remove('show'); }
+
+  /* Confirmación en el propio botón: ícono ✓ y etiqueta temporal */
+  function flashOk(btn, label) {
+    if (!btn || btn.dataset.busy === '1') return;
+    var ico = btn.querySelector('.ico');
+    var textNode = btn.lastChild;
+    btn.dataset.busy = '1';
+    var oldIco = ico ? ico.textContent : '';
+    var oldText = textNode ? textNode.nodeValue : '';
+    if (ico) ico.textContent = '✓';
+    if (textNode) textNode.nodeValue = label || '¡Copiado!';
+    btn.classList.add('ok');
+    setTimeout(function () {
+      if (ico) ico.textContent = oldIco;
+      if (textNode) textNode.nodeValue = oldText;
+      btn.classList.remove('ok');
+      btn.dataset.busy = '0';
+    }, 1800);
+  }
+
+  function legacyCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    var ok = false;
+    try {
+      ta.contentEditable = 'true';
+      var range = document.createRange();
+      range.selectNodeContents(ta);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      ta.setSelectionRange(0, text.length);
+      ok = document.execCommand('copy');
+      sel.removeAllRanges();
+    } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function copyText(text, okMsg, btn) {
+    function done() { flashOk(btn); toast(okMsg); buzz(8); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {
+          if (legacyCopy(text)) done(); else toast('El navegador no dejó copiar.');
+        });
+        return;
+      }
+    } catch (e) {}
+    if (legacyCopy(text)) done(); else toast('El navegador no dejó copiar.');
+  }
+
+  /* ---------------- tema ---------------- */
+  function applyTheme(mode) {
+    document.documentElement.setAttribute('data-theme', mode);
+    document.querySelectorAll('[data-theme-btn]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.themeBtn === mode ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('[data-theme-btn]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      applyTheme(b.dataset.themeBtn);
+      try { localStorage.setItem(THEME_KEY, b.dataset.themeBtn); } catch (e) {}
+    });
+  });
+  var savedTheme = 'auto';
+  try { savedTheme = localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) {}
+  applyTheme(savedTheme);
+
+  /* ---------------- pintar ---------------- */
+  function currentIndex() {
+    /* El paso en el que voy es el primero que todavía no he marcado */
+    for (var i = 0; i < state.step.length; i++) if (!state.step[i]) return i;
+    return -1;
+  }
+
+  function paint() {
+    ings.forEach(function (li, i) {
+      var on = !!state.ing[i];
+      li.classList.toggle('done', on);
+      li.querySelector('.chk').checked = on;
+    });
+
+    var cur = currentIndex();
+    steps.forEach(function (li, i) {
+      var on = !!state.step[i];
+      li.classList.toggle('done', on);
+      li.classList.toggle('current', i === cur);
+      li.querySelector('.step-row').setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+
+    var ingDone = count(state.ing);
+    var stepDone = count(state.step);
+    document.getElementById('ingCount').textContent = ingDone + '/' + ings.length;
+    document.getElementById('stepCount').textContent = stepDone + '/' + steps.length;
+    ingCard.classList.toggle('complete', ingDone === ings.length);
+    stepCard.classList.toggle('complete', stepDone === steps.length);
+    allIng.textContent = ingDone === ings.length ? 'Desmarcar todos' : 'Marcar todos';
+
+    ingCard.classList.toggle('collapsed', !!state.col.ing);
+    stepCard.classList.toggle('collapsed', !!state.col.step);
+    document.querySelectorAll('.head-main').forEach(function (b) {
+      b.setAttribute('aria-expanded', state.col[b.dataset.sec] ? 'false' : 'true');
+    });
+
+    var pct = steps.length ? Math.round((stepDone / steps.length) * 100) : 0;
+    var label = document.getElementById('stepLabel');
+    if (cur === -1) {
+      label.innerHTML = '<strong>Todos los pasos</strong> hechos';
+      document.getElementById('pctLabel').textContent = '¡Listo! 🎉';
+    } else {
+      label.innerHTML = 'Vas en el paso <strong>' + (cur + 1) + '</strong> de ' + steps.length;
+      document.getElementById('pctLabel').textContent = pct + '%';
+    }
+    banner.hidden = cur !== -1;
+    document.getElementById('bar').setAttribute('aria-valuenow', pct);
+    barFill.style.width = pct + '%';
+  }
+
+  /* Al avanzar, acerca el siguiente paso si se quedó fuera de la pantalla */
+  function reveal(i) {
+    if (i < 0 || i >= steps.length || state.col.step) return;
+    var r = steps[i].getBoundingClientRect();
+    if (r.top >= 120 && r.bottom <= window.innerHeight - 20) return;
+    var soft = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    try { steps[i].scrollIntoView({ block: 'center', behavior: soft ? 'auto' : 'smooth' }); }
+    catch (e) { steps[i].scrollIntoView(); }
+  }
+
+  /* ---------------- secciones ---------------- */
+  document.querySelectorAll('.head-main').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var sec = btn.dataset.sec;
+      state.col[sec] = !state.col[sec];
+      save(); paint();
+    });
+  });
+
+  /* ---------------- interacción ---------------- */
+  ings.forEach(function (li, i) {
+    li.querySelector('.chk').addEventListener('change', function (e) {
+      state.ing[i] = e.target.checked;
+      li.classList.toggle('done', state.ing[i]);
+      buzz(6);
+      /* Alistamiento completo: la sección se guarda sola y deja el paso a paso arriba */
+      if (count(state.ing) === ings.length) {
+        state.col.ing = true;
+        toast('Todo alistado. Guardé los ingredientes.');
+      }
+      save(); paint();
+    });
+  });
+
+  allIng.addEventListener('click', function () {
+    var marcar = count(state.ing) < ings.length;
+    pushUndo();
+    state.ing = ings.map(function () { return marcar; });
+    state.col.ing = marcar;
+    buzz(marcar ? 10 : 6);
+    save(); paint();
+    toast(marcar ? 'Todo alistado. Guardé los ingredientes.' : 'Ingredientes desmarcados.', 'Deshacer', undo);
+  });
+
+  steps.forEach(function (li, i) {
+    li.querySelector('.step-row').addEventListener('click', function () {
+      var marking = !state.step[i];
+      state.step[i] = marking;
+      /* Marcar un paso da por hechos los anteriores; desmarcarlo suelta los siguientes */
+      if (marking) { for (var a = 0; a < i; a++) state.step[a] = true; }
+      else { for (var b = i + 1; b < state.step.length; b++) state.step[b] = false; }
+      buzz(marking ? 10 : 6);
+      save(); paint();
+      if (marking) reveal(currentIndex());
+    });
+  });
+
+  /* ---------------- temporizadores ---------------- */
+  var actx = null;
+  function ensureAudio() {
+    try {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return;
+      if (!actx) actx = new C();
+      if (actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  /* Tres pitos cortos, sintetizados: no hay archivos de sonido que cargar */
+  function beep() {
+    if (!actx) return;
+    try {
+      var t0 = actx.currentTime;
+      [0, 0.3, 0.6].forEach(function (off) {
+        var osc = actx.createOscillator(), gain = actx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, t0 + off);
+        gain.gain.exponentialRampToValueAtTime(0.22, t0 + off + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.24);
+        osc.connect(gain); gain.connect(actx.destination);
+        osc.start(t0 + off); osc.stop(t0 + off + 0.26);
+      });
+    } catch (e) {}
+  }
+
+  function mmss(s) {
+    var m = Math.floor(s / 60), r = s % 60;
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  function setupTimer(btn) {
+    var mins = parseFloat(btn.dataset.min);
+    var label = btn.dataset.label || (mins + ' min');
+    var endsAt = 0, tick = null;
+
+    function idle() {
+      btn.textContent = '⏱ ' + label;
+      btn.classList.remove('running', 'rang');
+      btn.setAttribute('aria-label', 'Poner temporizador de ' + label);
+    }
+    function stop() {
+      clearInterval(tick); tick = null; endsAt = 0;
+      idle();
+    }
+    /* Cuenta contra una hora de fin, no restando: así aguanta que el navegador
+       congele la pestaña en segundo plano y al volver muestra el tiempo real */
+    function render() {
+      var left = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+      btn.textContent = '⏱ ' + mmss(left);
+      btn.setAttribute('aria-label', 'Faltan ' + mmss(left) + '. Tocar para cancelar');
+      if (left <= 0) {
+        clearInterval(tick); tick = null; endsAt = 0;
+        btn.classList.remove('running');
+        btn.classList.add('rang');
+        btn.textContent = '⏱ ¡Listo!';
+        btn.setAttribute('aria-label', 'Se cumplieron los ' + label);
+        buzz([220, 120, 220, 120, 220]);
+        beep();
+        toast('Se cumplieron los ' + label + '.');
+      }
+    }
+
+    btn.addEventListener('click', function () {
+      if (tick) { stop(); toast('Temporizador cancelado.'); return; }
+      if (btn.classList.contains('rang')) { idle(); return; }
+      ensureAudio();
+      endsAt = Date.now() + mins * 60000;
+      btn.classList.add('running');
+      render();
+      tick = setInterval(render, 250);
+      toast('Temporizador de ' + label + ' andando.');
+      buzz(8);
+    });
+
+    idle();
+  }
+  document.querySelectorAll('.timer').forEach(setupTimer);
+
+  /* ---------------- acciones ---------------- */
+  function asText() {
+    var lines = ['🌿 Chimichurri', '', 'Ingredientes:'];
+    ings.forEach(function (li) { lines.push('- ' + li.querySelector('.name').textContent.trim()); });
+    lines.push('', 'Paso a paso:');
+    steps.forEach(function (li, i) {
+      lines.push((i + 1) + '. ' + li.querySelector('.step-title').textContent.trim() +
+                 ' — ' + li.querySelector('.step-detail').textContent.trim());
+    });
+    lines.push('', 'El truco: no piques todo de una sola. Ve picando y echando de a poquitos, revolviendo a medida que avanzas.');
+    return lines.join('\n');
+  }
+
+  var copyBtn = document.getElementById('copyBtn');
+  copyBtn.addEventListener('click', function () { copyText(asText(), 'Receta copiada.', copyBtn); });
+
+  var shareBtn = document.getElementById('shareBtn');
+  if (navigator.share) {
+    shareBtn.hidden = false;
+    shareBtn.addEventListener('click', function () {
+      navigator.share({ title: 'Chimichurri', text: asText() }).then(
+        function () { flashOk(shareBtn, '¡Compartido!'); },
+        function () {}
+      );
+    });
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', function () {
+    if (!count(state.ing) && !count(state.step)) { toast('Todavía no has marcado nada.'); return; }
+    pushUndo();
+    state = blank();
+    save(); paint();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    toast('Avance reiniciado.', 'Deshacer', undo);
+  });
+
+  /* ---------------- pantalla encendida ---------------- */
+  var wakeBtn = document.getElementById('wakeBtn');
+  var lock = null, wantWake = false;
+
+  function releaseWake() {
+    wantWake = false;
+    wakeBtn.setAttribute('aria-pressed', 'false');
+    if (lock) { try { lock.release(); } catch (e) {} }
+    lock = null;
+  }
+  function acquireWake() {
+    if (!wantWake || lock || document.visibilityState !== 'visible') return;
+    navigator.wakeLock.request('screen').then(function (l) {
+      lock = l;
+      l.addEventListener('release', function () { lock = null; });
+    }, function () {
+      releaseWake();
+      toast('El navegador no dejó mantener la pantalla encendida.');
+    });
+  }
+
+  if ('wakeLock' in navigator) {
+    wakeBtn.hidden = false;
+    wakeBtn.addEventListener('click', function () {
+      if (wantWake) { releaseWake(); toast('La pantalla vuelve a apagarse sola.'); return; }
+      wantWake = true;
+      wakeBtn.setAttribute('aria-pressed', 'true');
+      acquireWake();
+      toast('La pantalla se queda encendida mientras cocinas.');
+    });
+    /* El sistema suelta el bloqueo al cambiar de app: hay que volverlo a pedir */
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') acquireWake();
+    });
+  }
+
+  /* ---------------- arranque ---------------- */
+  state = load() || blank();
+  paint();
+})();
+</script>
+</body>
+</html>

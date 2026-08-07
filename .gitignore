@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Linux
+.directory
+
+# Editores e IDE
+.idea/
+.vscode/
+.fleet/
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Herramientas de IA
+.claude/
+.cursor/
+.aider*
+
+# Node, por si algún día hace falta
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.env
+.env.local
+
+# Temporales
+*.log
+*.tmp
+*.bak
