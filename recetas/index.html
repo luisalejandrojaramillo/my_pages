@@ -172,7 +172,8 @@
   /* Avance guardado de cada receta */
   .prog{display:block;margin-top:11px}
   .prog[hidden]{display:none}
-  .prog .bar{display:block;height:6px;background:var(--track);border-radius:99px;overflow:hidden}
+  /* En escritorio la tarjeta es ancha: una barra de 6px estirada a 750px se lee mal */
+  .prog .bar{display:block;max-width:340px;height:6px;background:var(--track);border-radius:99px;overflow:hidden}
   .prog .bar i{display:block;height:100%;width:0%;border-radius:99px;background:var(--accent);
                transition:width .32s cubic-bezier(.32,.72,0,1)}
   .prog .txt{display:block;margin-top:6px;font-size:13px;font-weight:600;color:var(--accent)}

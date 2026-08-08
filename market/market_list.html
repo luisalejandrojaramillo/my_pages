@@ -11,6 +11,8 @@
 <meta name="description" content="Lista de mercado interactiva por categorías, con progreso, importación de listas y modo noche.">
 <title>🛒 Lista de mercado</title>
 <script>
+  /* Marca que sí hay JavaScript, para esconder la lista de ejemplo antes de pintarla */
+  document.documentElement.className = 'js';
   /* Aplica el tema guardado antes de pintar, para evitar el parpadeo blanco */
   try {
     var t = JSON.parse(localStorage.getItem('listaMercado.v3') || 'null');
@@ -158,6 +160,11 @@
   .pct{font-size:15px;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums;white-space:nowrap;flex:0 0 auto}
   /* Un tramo por categoría, ancho proporcional a cuántos productos tiene */
   .bar{display:flex;gap:3px;height:9px;overflow:hidden;border-radius:99px}
+  /* Sin categorías no hay tramos: que no quede la franja vacía ocupando alto */
+  .bar:empty{display:none}
+  /* Y el contador tampoco tiene nada que contar: la cabecera se queda con el título */
+  .topbar.empty .status{display:none}
+  .topbar.empty .title-row{margin-bottom:0}
   .seg{background:var(--track);border-radius:99px;overflow:hidden;min-width:6px}
   .seg i{display:block;height:100%;width:0%;border-radius:99px;background:var(--accent);transition:width .32s cubic-bezier(.32,.72,0,1)}
 
@@ -184,7 +191,8 @@
   .card.complete .count{color:var(--card);background:var(--accent)}
   .chev{flex:0 0 auto;width:10px;height:10px;border:solid var(--muted);border-width:0 2px 2px 0;
         transform:rotate(45deg);margin:-4px 2px 0 2px;transition:transform .2s ease}
-  .card.collapsed .chev{transform:rotate(-45deg);margin-top:2px}
+  /* Plegada: la punta va hacia arriba (-135°), que es el par natural de la de abajo */
+  .card.collapsed .chev{transform:rotate(-135deg);margin-top:2px}
   .card.collapsed .card-body{display:none}
   .more{
     flex:0 0 auto;width:44px;height:44px;border:0;background:transparent;color:var(--muted);
@@ -253,10 +261,46 @@
   }
   .add button:active{transform:scale(.94)}
 
-  /* Estado sin categorías */
-  .blank{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 22px;text-align:center}
-  .blank h2{margin:0 0 6px;font-size:18px;font-weight:650}
-  .blank p{margin:0 0 18px;color:var(--muted);font-size:15px}
+  /* La lista de ejemplo solo la ven los navegadores sin JavaScript */
+  html.js #seed{display:none}
+
+  /* Pantalla de armar lista: lo primero que se ve cuando no hay nada guardado */
+  /* El mismo margen que .card: si no, queda pegada al borde de la cabecera */
+  .blank{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin:16px 0;padding:34px 22px 26px;text-align:center}
+  .blank-ico{
+    width:66px;height:66px;margin:0 auto 16px;border-radius:22px;background:var(--tint);
+    display:flex;align-items:center;justify-content:center;font-size:32px;
+  }
+  .blank h2{margin:0 0 8px;font-size:20px;font-weight:700;letter-spacing:-.015em}
+  .blank p{margin:0 0 22px;color:var(--muted);font-size:15px;line-height:1.5}
+  /* En escritorio la tarjeta es ancha: los botones no deben estirarse de lado a lado */
+  .blank-actions{display:flex;flex-direction:column;gap:10px;max-width:380px;margin:0 auto}
+  .blank-actions button{width:100%}
+  .blank p{max-width:420px;margin-left:auto;margin-right:auto}
+  .ghost{
+    min-height:52px;border:0;border-radius:15px;background:transparent;color:var(--muted);
+    font-size:15px;font-weight:600;cursor:pointer;transition:background .15s ease,color .15s ease;
+  }
+  .ghost:active{background:var(--tint);color:var(--text)}
+
+  /* Ayuda para pedirle la lista a un LLM, dentro de la hoja de importar */
+  .helper{
+    display:flex;align-items:flex-start;gap:12px;
+    background:var(--card-soft);border:1px solid var(--line);border-radius:15px;
+    padding:13px 14px;margin:0 0 16px;
+  }
+  .helper .ico{
+    flex:0 0 auto;width:32px;height:32px;border-radius:10px;background:var(--card);
+    border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:16px;
+  }
+  .helper-main{flex:1;min-width:0}
+  .helper p{margin:0 0 10px;font-size:14px;line-height:1.45;color:var(--text-2)}
+  .helper button{
+    width:100%;min-height:42px;padding:0 15px;border:1px solid var(--field-line);border-radius:12px;
+    background:var(--field);color:var(--text);font-size:14.5px;font-weight:650;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease,color .15s ease;
+  }
+  .helper button:active,.helper button.ok{border-color:var(--green);color:var(--green)}
 
   /* ---------------- Menú de acciones ---------------- */
   .menu{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin:22px 0 0}
@@ -369,7 +413,7 @@
   @media (min-width:760px){
     body{padding-bottom:40px}
     .topbar{padding-top:20px}
-    .card{margin:18px 0}
+    .card,.blank{margin:18px 0}
   }
   @media (min-width:700px) and (min-height:560px){
     .scrim{align-items:center;padding:24px}
@@ -391,6 +435,8 @@
     .add button:hover,.primary:hover{filter:brightness(1.07)}
     .secondary:hover{background:var(--card-soft)}
     .destructive:hover{background:var(--tint)}
+    .ghost:hover{background:var(--tint);color:var(--text)}
+    .helper button:hover{border-color:var(--green);color:var(--green)}
     .theme button:hover{color:var(--text)}
     .swatch:hover{transform:scale(1.08)}
     .credit a:hover{color:var(--green);border-color:var(--green)}
@@ -433,6 +479,10 @@
 </div>
 
 <main class="wrap" id="app">
+
+  <!-- Lista de ejemplo. Con JavaScript queda escondida y la app solo la lee como semilla,
+       para ofrecerla desde la pantalla de armar lista. Sin JavaScript, es lo que se ve. -->
+  <div id="seed">
 
   <section class="card" data-name="Supermercado" data-emoji="🛒" data-accent="#0F8A5B" style="--accent-base:#0F8A5B">
     <div class="card-head">
@@ -510,6 +560,8 @@
     </div>
   </section>
 
+  </div>
+
 </main>
 
 <div class="wrap">
@@ -521,9 +573,9 @@
     <button type="button" id="exportBtn"><span class="ico">📤</span>Copiar lista completa</button>
     <button type="button" id="uncheckAll"><span class="ico">↺</span>Desmarcar todo</button>
     <button type="button" id="removeDone"><span class="ico">🧹</span>Eliminar comprados</button>
-    <button type="button" id="restore" class="danger"><span class="ico">⟲</span>Restaurar lista original</button>
+    <button type="button" id="newList" class="danger"><span class="ico">🆕</span>Empezar una lista nueva</button>
   </div>
-  <p class="note">Los cambios se guardan en este dispositivo.<br>Toca una categoría para plegarla, o ⋯ para editarla.</p>
+  <p class="note">Los cambios se guardan en este dispositivo.<br><span id="noteHint">Toca una categoría para plegarla, o ⋯ para editarla.</span></p>
 </div>
 
 <footer class="wrap credit">
@@ -550,6 +602,30 @@
 
   var KEY = 'listaMercado.v3';
   var PALETTE = ['#0F8A5B','#5A9B2E','#B7622F','#2F6FB7','#7A5AD6','#B08B12','#C0405C','#0E8F94'];
+
+  /* Instrucciones listas para pegarle a un LLM. Describen exactamente lo que parseList() entiende. */
+  var LLM_PROMPT = [
+    'Necesito una lista de mercado en texto plano, con este formato exacto:',
+    '',
+    '🛒 Supermercado',
+    '- Leche',
+    '- Huevos x12',
+    '- [x] Pan',
+    '',
+    '🥬 Plaza',
+    '- Tomate',
+    '- Cebolla cabezona',
+    '',
+    'Reglas del formato:',
+    '- Cada categoría va en su propia línea, sin guion, y puede empezar con un emoji.',
+    '- Cada producto va en su propia línea y empieza con un guion.',
+    '- Si ya lo tengo comprado, escribe "- [x] " en vez de "- ".',
+    '- La cantidad va dentro del nombre del producto, por ejemplo "- Huevos x12".',
+    '- No uses negritas, numeración, tablas ni encabezados de Markdown.',
+    '- No escribas nada antes ni después de la lista: solo la lista.',
+    '',
+    'Esto es lo que necesito: '
+  ].join('\n');
 
   var app = document.getElementById('app');
   var barEl = document.getElementById('bar');
@@ -804,22 +880,52 @@
 
   function blankEl() {
     var box = el('div', 'blank');
-    box.appendChild(el('h2', null, 'La lista está vacía'));
-    box.appendChild(el('p', null, 'Crea una categoría o importa una lista en texto.'));
-    var b1 = el('button', 'primary', 'Importar lista');
-    b1.type = 'button'; b1.style.width = '100%'; b1.style.marginBottom = '10px';
+    box.appendChild(el('div', 'blank-ico', '🛒'));
+    box.appendChild(el('h2', null, 'Arma tu lista de mercado'));
+    box.appendChild(el('p', null, 'Pega una lista que ya tengas, o créala por categorías. Se guarda sola en este dispositivo.'));
+
+    var actions = el('div', 'blank-actions');
+
+    var b1 = el('button', 'primary', 'Pegar o importar una lista');
+    b1.type = 'button';
     b1.addEventListener('click', openImportSheet);
-    var b2 = el('button', 'secondary', 'Nueva categoría');
-    b2.type = 'button'; b2.style.width = '100%';
+
+    var b2 = el('button', 'secondary', 'Crear una categoría');
+    b2.type = 'button';
     b2.addEventListener('click', function () { openCategorySheet(null); });
-    box.appendChild(b1); box.appendChild(b2);
+
+    var b3 = el('button', 'ghost', 'Ver una lista de ejemplo');
+    b3.type = 'button';
+    b3.addEventListener('click', function () {
+      pushUndo();
+      var theme = model.theme;
+      model = clone(SEED);
+      model.theme = theme;
+      save(); render();
+      toast('Lista de ejemplo cargada.', 'Deshacer', undo);
+    });
+
+    actions.appendChild(b1); actions.appendChild(b2); actions.appendChild(b3);
+    box.appendChild(actions);
     return box;
+  }
+
+  /* Con la lista vacía, las acciones que operan sobre productos no tienen qué hacer */
+  function syncMenu() {
+    var empty = !model.categories.length;
+    document.querySelector('.topbar').classList.toggle('empty', empty);
+    ['copyPending', 'exportBtn', 'uncheckAll', 'removeDone', 'newList'].forEach(function (id) {
+      document.getElementById(id).hidden = empty;
+    });
+    document.getElementById('shareBtn').hidden = empty || !navigator.share;
+    document.getElementById('noteHint').hidden = empty;
   }
 
   function render() {
     app.textContent = '';
     if (!model.categories.length) app.appendChild(blankEl());
     else model.categories.forEach(function (cat) { app.appendChild(cardEl(cat)); });
+    syncMenu();
     refresh();
   }
 
@@ -1143,6 +1249,21 @@
   function openImportSheet() {
     var body = openSheet('Importar lista', 'Una línea suelta abre una categoría. Las líneas con guion son productos. Usa [x] para marcar algo ya comprado.');
 
+    /* Atajo: en vez de explicarle el formato a mano a un LLM, se copia listo */
+    var helper = el('div', 'helper');
+    helper.appendChild(el('span', 'ico', '🤖'));
+    var hMain = el('div', 'helper-main');
+    hMain.appendChild(el('p', null,
+      '¿Prefieres que te la arme un LLM? Copia estas instrucciones, pégalas en ChatGPT o Claude, dile qué necesitas, y lo que te devuelva lo pegas aquí abajo.'));
+    var llmBtn = el('button', null, 'Copiar instrucciones');
+    llmBtn.type = 'button';
+    llmBtn.addEventListener('click', function () {
+      copyText(LLM_PROMPT, 'Instrucciones copiadas. Pégalas en tu LLM.', llmBtn);
+    });
+    hMain.appendChild(llmBtn);
+    helper.appendChild(hMain);
+    body.appendChild(helper);
+
     var ta = document.createElement('textarea');
     ta.placeholder = '🛒 Supermercado\n- Leche\n- [x] Pan\n\n🥬 Plaza\n- Limón\n- Tomate';
     ta.setAttribute('aria-label', 'Lista en texto');
@@ -1252,18 +1373,20 @@
     toast(plural(n, 'producto eliminado', 'productos eliminados') + '.', 'Deshacer', undo);
   });
 
-  document.getElementById('restore').addEventListener('click', function () {
-    if (!confirm('Se descartará la lista actual, incluidas las categorías importadas, y volverá la lista original. ¿Continuar?')) return;
+  document.getElementById('newList').addEventListener('click', function () {
+    var n = 0;
+    model.categories.forEach(function (c) { n += c.items.length; });
+    if (!confirm('Se borrará la lista actual, con ' + plural(n, 'producto', 'productos') + '. ¿Empezar de cero?')) return;
     pushUndo();
-    var theme = model.theme;
-    model = clone(SEED);
-    model.theme = theme;
+    model.categories = [];
     save(); render();
-    toast('Lista original restaurada.', 'Deshacer', undo);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    toast('Lista vaciada. Arma la nueva.', 'Deshacer', undo);
   });
 
   /* ---------------- arranque ---------------- */
-  model = load() || clone(SEED);
+  /* Sin nada guardado se arranca en la pantalla de armar lista, no en la de ejemplo */
+  model = load() || { theme: 'auto', categories: [] };
   if (!model.theme) model.theme = 'auto';
   applyTheme(model.theme);
   render();

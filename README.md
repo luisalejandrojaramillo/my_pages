@@ -16,15 +16,17 @@ Colección de aplicaciones web estáticas publicadas con GitHub Pages. Cada una 
 
 Aplicación de lista de compras pensada principalmente para uso móvil.
 
+- Arranca en una pantalla para armar la lista: pegar una, crear categorías o cargar el ejemplo
 - Productos organizados por categorías, con progreso global y por categoría
 - Marcar comprados, agregar y eliminar productos
 - Crear, editar, reordenar y borrar categorías
 - Importar y exportar listas en texto plano
+- Botón que copia el formato listo para pedirle la lista a un LLM
 - Copiar o compartir lo pendiente
-- Deshacer cualquier acción destructiva
+- Empezar una lista nueva desde cero, o deshacer cualquier acción destructiva
 - Estado persistido en `localStorage`
 - Modo noche manual o automático
-- Lista inicial escrita como HTML estático, visible incluso sin JavaScript
+- Lista de ejemplo escrita como HTML estático, que se ve tal cual sin JavaScript
 - Diseño responsive en teléfono y escritorio
 
 ### 🍳 Recetas
