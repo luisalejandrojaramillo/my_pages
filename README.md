@@ -1,15 +1,18 @@
 # Static Pages
 
-Colección de aplicaciones web estáticas publicadas con GitHub Pages. Cada una vive en su propia carpeta y funciona en un único archivo HTML autocontenido, sin frameworks, sin build y sin dependencias externas.
+[![Ver el sitio](https://img.shields.io/badge/Ver_el_sitio-luisalejandrojaramillo.github.io-0F8A5B?style=for-the-badge&logo=githubpages&logoColor=white)](https://luisalejandrojaramillo.github.io/my_pages/)
+[![Sin build](https://img.shields.io/badge/Sin_build-HTML_en_un_solo_archivo-E34F26?style=for-the-badge&logo=html5&logoColor=white)](#cómo-funciona-esto)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Luis_Alejandro_Jaramillo-0A66C2?style=for-the-badge)](https://linkedin.com/in/luis-alejandro-jaramillo-rincon)
 
-El sitio queda en **https://luisalejandrojaramillo.github.io/my_pages/**
+Colección de aplicaciones web estáticas publicadas con GitHub Pages. Cada una vive en su propia carpeta y funciona en un único archivo HTML autocontenido, sin frameworks, sin build y sin dependencias externas.
 
 ## Publicadas
 
-### Lista de mercado
-`market/market_list.html`
+### 🛒 Lista de mercado
 
-https://luisalejandrojaramillo.github.io/my_pages/market/market_list.html
+[![Abrir la lista de mercado](https://img.shields.io/badge/Abrir-Lista_de_mercado-0F8A5B?style=for-the-badge&logo=googlekeep&logoColor=white)](https://luisalejandrojaramillo.github.io/my_pages/market/market_list.html)
+
+`market/market_list.html`
 
 Aplicación de lista de compras pensada principalmente para uso móvil.
 
@@ -24,10 +27,11 @@ Aplicación de lista de compras pensada principalmente para uso móvil.
 - Lista inicial escrita como HTML estático, visible incluso sin JavaScript
 - Diseño responsive en teléfono y escritorio
 
-### Recetas
-`recetas/index.html`
+### 🍳 Recetas
 
-https://luisalejandrojaramillo.github.io/my_pages/recetas/
+[![Abrir el índice de recetas](https://img.shields.io/badge/Abrir-Recetas-5A9B2E?style=for-the-badge&logo=bookstack&logoColor=white)](https://luisalejandrojaramillo.github.io/my_pages/recetas/)
+
+`recetas/index.html`
 
 Índice de recetas de la casa. Cada receta vive en su propio archivo dentro de la misma carpeta.
 
@@ -48,9 +52,9 @@ https://luisalejandrojaramillo.github.io/my_pages/recetas/
 
 Recetas publicadas:
 
-| Receta | Archivo | URL |
+| Receta | Archivo | Abrir |
 | --- | --- | --- |
-| Chimichurri | `recetas/chimichurri.html` | https://luisalejandrojaramillo.github.io/my_pages/recetas/chimichurri.html |
+| 🌿 Chimichurri | `recetas/chimichurri.html` | [![Abrir el chimichurri](https://img.shields.io/badge/Abrir-5A9B2E?style=flat-square&logo=googlechrome&logoColor=white)](https://luisalejandrojaramillo.github.io/my_pages/recetas/chimichurri.html) |
 
 ## Cómo funciona esto
 
@@ -92,6 +96,9 @@ funcionan igual que en producción el portapapeles y el `localStorage` compartid
 
 ## Autor
 
-Luis Alejandro Jaramillo
+**Luis Alejandro Jaramillo**
 
-[GitHub](https://github.com/luisalejandrojaramillo) · [LinkedIn](https://linkedin.com/in/luis-alejandro-jaramillo-rincon)
+[![GitHub](https://img.shields.io/badge/GitHub-luisalejandrojaramillo-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/luisalejandrojaramillo)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Luis_Alejandro_Jaramillo-0A66C2?style=for-the-badge)](https://linkedin.com/in/luis-alejandro-jaramillo-rincon)
+
+El copyright al pie de cada página enlaza a este mismo perfil de LinkedIn.

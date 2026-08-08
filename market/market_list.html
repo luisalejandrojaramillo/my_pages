@@ -282,6 +282,11 @@
   .credit{margin-top:26px;text-align:center}
   .credit p{margin:0;font-size:12px;color:var(--muted);line-height:1.6}
   .credit .sep{opacity:.5;padding:0 6px}
+  .credit a{
+    color:inherit;text-decoration:none;border-bottom:1px solid var(--line);
+    transition:color .15s ease,border-color .15s ease;
+  }
+  .credit a:active{color:var(--green);border-color:var(--green)}
 
   /* ---------------- Hoja inferior ---------------- */
   .scrim{
@@ -388,6 +393,7 @@
     .destructive:hover{background:var(--tint)}
     .theme button:hover{color:var(--text)}
     .swatch:hover{transform:scale(1.08)}
+    .credit a:hover{color:var(--green);border-color:var(--green)}
   }
 
   /* ---------------- Impresión ---------------- */
@@ -521,7 +527,7 @@
 </div>
 
 <footer class="wrap credit">
-  <p>© <span id="year">2026</span> Luis Alejandro Jaramillo<span class="sep">·</span>Todos los derechos reservados</p>
+  <p>© <span id="year">2026</span> <a href="https://linkedin.com/in/luis-alejandro-jaramillo-rincon" target="_blank" rel="noopener noreferrer" title="Perfil de LinkedIn">Luis Alejandro Jaramillo</a><span class="sep">·</span>Todos los derechos reservados</p>
 </footer>
 
 <div class="scrim" id="scrim" hidden>
