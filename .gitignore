@@ -37,3 +37,7 @@ yarn-error.log*
 *.log
 *.tmp
 *.bak
+
+# Tinta: las librerías las baja inline.sh y los PDFs de prueba se generan
+archivos/tinta/_libs/
+archivos/tinta/_test/

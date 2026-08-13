@@ -6,6 +6,24 @@
 
 Colección de aplicaciones web estáticas publicadas con GitHub Pages. Cada una vive en su propia carpeta y funciona en un único archivo HTML autocontenido, sin frameworks, sin build y sin dependencias externas.
 
+## Los proyectos
+
+| | Proyecto | Qué hace | Carpeta | |
+| --- | --- | --- | --- | --- |
+| 🖋 | **[Tinta](#-tinta)** | Llena formularios en PDF, firma y pon tu huella sin subir el archivo a ningún lado | `archivos/tinta/` | [![Abrir](https://img.shields.io/badge/Abrir-2348CE?style=flat-square&logo=googlechrome&logoColor=white)](https://luisalejandrojaramillo.github.io/my_pages/archivos/tinta/) |
+| 🛒 | **[Lista de mercado](#-lista-de-mercado)** | Lista de compras por categorías, con progreso y modo noche | `market/` | [![Abrir](https://img.shields.io/badge/Abrir-0F8A5B?style=flat-square&logo=googlechrome&logoColor=white)](https://luisalejandrojaramillo.github.io/my_pages/market/market_list.html) |
+| 🍳 | **[Recetas](#-recetas)** | Recetas de la casa con paso a paso, temporizadores y avance guardado | `recetas/` | [![Abrir](https://img.shields.io/badge/Abrir-5A9B2E?style=flat-square&logo=googlechrome&logoColor=white)](https://luisalejandrojaramillo.github.io/my_pages/recetas/) |
+
+### Categorías
+
+Las aplicaciones que comparten tema viven bajo una carpeta que las agrupa. Las que llegaron
+antes de que existieran las categorías se quedaron en la raíz para no romper sus enlaces.
+
+| Categoría | Carpeta | Qué va adentro |
+| --- | --- | --- |
+| Utilidades para archivos | `archivos/` | Herramientas que abren, editan o convierten archivos del usuario. Hoy: Tinta |
+| Sin categoría | raíz | `market/` y `recetas/`, publicadas antes de agrupar por tema |
+
 ## Publicadas
 
 ### 🛒 Lista de mercado
@@ -28,6 +46,30 @@ Aplicación de lista de compras pensada principalmente para uso móvil.
 - Modo noche manual o automático
 - Lista de ejemplo escrita como HTML estático, que se ve tal cual sin JavaScript
 - Diseño responsive en teléfono y escritorio
+
+### 🖋 Tinta
+
+[![Abrir Tinta](https://img.shields.io/badge/Abrir-Tinta-2348CE?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://luisalejandrojaramillo.github.io/my_pages/archivos/tinta/)
+
+`archivos/tinta/index.html`
+
+Editor de PDFs para diligenciar formularios. El archivo nunca sale del equipo: no hay servidor, todo el procesamiento ocurre dentro de la pestaña y funciona sin internet.
+
+- Cargar el PDF arrastrándolo o desde el selector, con varias páginas y navegación continua
+- Escribir sobre la página con tamaño, color, negrita, tres fuentes y edición en línea
+- Enganche automático al renglón: el texto se pega solo a las rayas y a los puntos suspensivos del formulario
+- Firma dibujada a mano alzada, con grosor variable según la velocidad, recortada al trazo y con fondo transparente; o subida como foto de una firma en papel
+- Huella digital desde la foto o el escaneo, con quitador de fondo por umbral para que no tape el formulario
+- Sellos, logos y fotos en PNG, JPG o WebP
+- Mover, redimensionar manteniendo proporción, girar para cuadrar escaneos torcidos y eliminar
+- «Mis datos»: nombre, documento, ciudad y demás guardados para no reescribirlos en cada campo
+- Detecta formularios con campos rellenables reales y los llena como campos nativos, aplanándolos al descargar
+- Deshacer y rehacer de verdad, con pila de comandos: el tecleo se agrupa por ráfaga y un arrastre entero es una sola acción
+- Zoom, ajuste al ancho, tamaño real y pellizco en móvil
+- Coordenadas exactas con `/Rotate` en 0, 90, 180 y 270 y con `CropBox` desplazado
+- Modo noche manual o automático; el papel siempre se ve blanco
+- Mensajes de error que dicen qué pasó y cómo resolverlo, incluidos PDFs dañados y protegidos con contraseña
+- Diseño responsive, foco visible por teclado y `prefers-reduced-motion` respetado
 
 ### 🍳 Recetas
 
@@ -70,11 +112,41 @@ Convenciones que sigo acá:
 - Rutas de assets siempre relativas, porque la raíz del sitio es `/<repo>/` y no `/`
 - Todo en un solo archivo mientras el proyecto lo permita
 
+### El caso de Tinta
+
+Tinta necesita [pdf.js](https://mozilla.github.io/pdf.js/) para dibujar las páginas y
+[pdf-lib](https://pdf-lib.js.org/) para escribir sobre el PDF original sin rasterizarlo. Para que
+el archivo publicado siga sin dependencias externas, esas dos librerías van pegadas dentro del
+HTML. Por eso la carpeta tiene tres archivos en vez de uno:
+
+| Archivo | ¿Se publica? | Qué es |
+| --- | --- | --- |
+| `archivos/tinta/index.html` | **sí, es la app** | 2 MB, autocontenido, funciona sin internet |
+| `archivos/tinta/source.html` | no, es la fuente | lo que se edita, con las librerías por `<script src>` |
+| `archivos/tinta/inline.sh` | no, es la herramienta | baja las librerías y genera `index.html` a partir de `source.html` |
+
+Los tres van al repo. Para que el sitio funcione basta con `index.html`, pero sin `source.html`
+ni `inline.sh` el proyecto quedaría imposible de mantener: habría que editar a mano un archivo de
+2 MB con dos librerías minificadas adentro.
+
+Para tocar Tinta se edita `source.html` y se corre:
+
+```
+cd archivos/tinta && ./inline.sh
+```
+
+Sigue sin haber build para publicar: `index.html` está commiteado, así que basta con hacer push.
+El script solo se corre cuando se cambia el código o se sube de versión una librería.
+
 ## Agregar una página nueva
 
-1. Crear la carpeta con el `index.html` adentro
-2. Hacer commit a `main`
-3. Enlazarla desde el índice de la raíz y desde este README, con su URL pública
+1. Elegir dónde va: si encaja en una categoría existente, dentro de esa carpeta; si no, en la raíz
+2. Crear la carpeta con el `index.html` adentro
+3. Hacer commit a `main`
+4. Sumarla a la tabla **Los proyectos** de este README y darle su sección con la URL pública
+
+Una categoría nueva se crea cuando haya una segunda aplicación que la comparta. Con una sola
+aplicación adentro, la carpeta de categoría solo alarga la URL.
 
 ## Agregar una receta nueva
 

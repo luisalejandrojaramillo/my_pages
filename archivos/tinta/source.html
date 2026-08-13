@@ -1,0 +1,3493 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#DCE0E6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#080A0D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tinta">
+<meta name="author" content="Luis Alejandro Jaramillo">
+<meta name="description" content="Llena formularios en PDF, firma a mano alzada y pon tu huella. Todo ocurre dentro de tu navegador: el archivo nunca se sube a ningún lado.">
+<title>Tinta · editor de PDF</title>
+<!-- El ícono de la pestaña es el mismo trazo del sprite, en línea -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232348CE' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3.5h6l2.4 11L12 20.5 6.6 14.5z'/%3E%3Cpath d='M12 12.6v7.9'/%3E%3Ccircle cx='12' cy='10.3' r='1.5'/%3E%3C/svg%3E">
+<script>
+  /* Aplica el tema guardado antes de pintar, para evitar el destello */
+  try {
+    var t = localStorage.getItem('tinta.theme');
+    document.documentElement.setAttribute('data-theme', t || 'auto');
+  } catch (e) {}
+</script>
+<style>
+  /* ================= Tokens =================
+     La mesa es gris frío y de poca saturación a propósito: el papel es blanco
+     en los dos temas y tiene que ser lo único luminoso de la pantalla.
+     El acento es azul de bolígrafo. Las guías de enganche son magenta, un tono
+     que no aparece nunca en un formulario escaneado ni se confunde con el acento. */
+  :root{
+    color-scheme:light;
+    --desk:#DCE0E6;
+    --panel:#FFFFFF;
+    --panel-2:#F4F6F8;
+    --panel-3:#E9ECF1;
+    --line:#DFE4EA;
+    --line-2:#C7CFD9;
+    --ink:#0E1319;
+    --ink-2:#525C68;
+    --ink-3:#818C99;
+    --accent:#2348CE;
+    --accent-2:#1B3AAD;
+    --accent-tint:rgba(35,72,206,.10);
+    --on-accent:#FFFFFF;
+    --guide:#D6246B;
+    --ok:#0F8A5B;
+    --danger:#C42B1C;
+    --danger-tint:rgba(196,43,28,.10);
+    --paper:#FFFFFF;
+    --paper-edge:rgba(14,19,25,.16);
+    --shadow:0 1px 2px rgba(14,19,25,.06), 0 8px 24px rgba(14,19,25,.09);
+    --shadow-paper:0 1px 3px rgba(14,19,25,.14), 0 10px 30px rgba(14,19,25,.13);
+    --scrim:rgba(14,19,25,.42);
+    --radius:14px;
+    --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --desk:#080A0D;
+      --panel:#13171D;
+      --panel-2:#1A1F26;
+      --panel-3:#232932;
+      --line:#252B34;
+      --line-2:#343C47;
+      --ink:#EDF1F6;
+      --ink-2:#A7B2BF;
+      --ink-3:#78828F;
+      --accent:#7C9BFF;
+      --accent-2:#9DB4FF;
+      --accent-tint:rgba(124,155,255,.16);
+      --on-accent:#08122E;
+      --guide:#FF5C9E;
+      --ok:#3BD190;
+      --danger:#FF7B6B;
+      --danger-tint:rgba(255,123,107,.14);
+      --paper-edge:rgba(0,0,0,.6);
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+      --shadow-paper:0 0 0 1px rgba(255,255,255,.07), 0 14px 36px rgba(0,0,0,.6);
+      --scrim:rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --desk:#080A0D;
+    --panel:#13171D;
+    --panel-2:#1A1F26;
+    --panel-3:#232932;
+    --line:#252B34;
+    --line-2:#343C47;
+    --ink:#EDF1F6;
+    --ink-2:#A7B2BF;
+    --ink-3:#78828F;
+    --accent:#7C9BFF;
+    --accent-2:#9DB4FF;
+    --accent-tint:rgba(124,155,255,.16);
+    --on-accent:#08122E;
+    --guide:#FF5C9E;
+    --ok:#3BD190;
+    --danger:#FF7B6B;
+    --danger-tint:rgba(255,123,107,.14);
+    --paper-edge:rgba(0,0,0,.6);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    --shadow-paper:0 0 0 1px rgba(255,255,255,.07), 0 14px 36px rgba(0,0,0,.6);
+    --scrim:rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--desk);color:var(--ink);
+    font-family:var(--ui);font-size:15px;line-height:1.35;
+    overflow:hidden;
+    display:flex;flex-direction:column;
+  }
+  button,input,select,textarea{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  [hidden]{display:none!important}
+
+  /* ================= Íconos =================
+     Un solo sprite de <symbol> al principio del body. Todo se dibuja con
+     stroke:currentColor, así que los íconos toman el color del texto que los
+     rodea y se ven igual de nítidos en claro y en oscuro. Las excepciones
+     rellenas llevan fill dentro del símbolo: los selectores CSS no entran al
+     árbol de un <use>, pero los atributos de presentación sí ganan. */
+  .sprite{position:absolute;width:0;height:0;overflow:hidden}
+  .ic{
+    width:18px;height:18px;flex:0 0 auto;display:block;
+    fill:none;stroke:currentColor;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round;
+    overflow:visible;
+  }
+  .tool .ic{width:21px;height:21px;stroke-width:1.6}
+  .drop .ic{width:42px;height:42px;stroke-width:1.35;margin:0 auto 14px}
+  .empty-pane .ic{width:28px;height:28px;stroke-width:1.5;margin:0 auto 10px;opacity:.55}
+  .theme .ic{width:15px;height:15px}
+  .zoombar .ic{width:16px;height:16px}
+
+  /* ================= Cabecera ================= */
+  .topbar{
+    flex:0 0 auto;display:flex;align-items:center;gap:10px;
+    padding:calc(9px + env(safe-area-inset-top)) 12px 9px;
+    background:var(--panel);border-bottom:1px solid var(--line);
+    padding-left:calc(12px + env(safe-area-inset-left));
+    padding-right:calc(12px + env(safe-area-inset-right));
+    position:relative;z-index:40;
+  }
+  .brand{display:flex;align-items:center;gap:8px;flex:0 0 auto;font-weight:680;letter-spacing:-.02em;font-size:16px}
+  .brand .mark{font-size:18px;line-height:1}
+  .doc{
+    flex:1;min-width:0;display:flex;align-items:center;gap:8px;
+    font-size:13.5px;color:var(--ink-2);
+  }
+  .doc .fname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--ink)}
+  .doc .fmeta{flex:0 0 auto;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+  .tools-top{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    height:34px;padding:0 11px;border-radius:9px;border:1px solid var(--line-2);
+    background:var(--panel);color:var(--ink);cursor:pointer;font-size:13.5px;font-weight:600;
+    transition:background .13s ease,border-color .13s ease,opacity .13s ease;
+    white-space:nowrap;
+  }
+  .btn:disabled{opacity:.38;cursor:default}
+  .btn.icon{width:34px;padding:0}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .btn.ghost{border-color:transparent;background:transparent}
+  .btn.danger{color:var(--danger);border-color:var(--line-2)}
+  @media (hover:hover) and (pointer:fine){
+    .btn:not(:disabled):hover{background:var(--panel-2)}
+    .btn.primary:not(:disabled):hover{background:var(--accent-2);border-color:var(--accent-2)}
+    .btn.ghost:not(:disabled):hover{background:var(--panel-2)}
+    .btn.danger:not(:disabled):hover{background:var(--danger-tint)}
+  }
+  .btn:not(:disabled):active{transform:translateY(.5px)}
+
+  .theme{display:flex;gap:2px;background:var(--panel-3);border-radius:10px;padding:2px;flex:0 0 auto}
+  .theme button{
+    border:0;background:transparent;color:var(--ink-3);border-radius:8px;
+    width:30px;height:28px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:background .13s ease,color .13s ease;
+  }
+  .theme button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  @media (hover:hover){.theme button:hover{color:var(--ink)}}
+
+  /* ================= Cuerpo ================= */
+  .body{flex:1;min-height:0;display:flex}
+
+  /* ---- riel de herramientas ---- */
+  .rail{
+    flex:0 0 auto;width:78px;background:var(--panel);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;gap:4px;padding:10px 8px;overflow-y:auto;
+    padding-left:calc(8px + env(safe-area-inset-left));
+  }
+  .tool{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    border:1px solid transparent;background:transparent;color:var(--ink-2);
+    border-radius:11px;padding:9px 2px 7px;cursor:pointer;font-size:10.5px;font-weight:600;
+    transition:background .13s ease,color .13s ease;letter-spacing:.01em;
+  }
+  .tool[aria-pressed="true"]{background:var(--accent-tint);color:var(--accent);border-color:transparent}
+  .tool:disabled{opacity:.35;cursor:default}
+  @media (hover:hover){.tool:not(:disabled):not([aria-pressed="true"]):hover{background:var(--panel-2);color:var(--ink)}}
+  .rail .sep{height:1px;background:var(--line);margin:6px 4px}
+
+  /* ---- mesa ---- */
+  .stage{flex:1;min-width:0;position:relative;display:flex;flex-direction:column;background:var(--desk)}
+  .deck{
+    flex:1;min-height:0;overflow:auto;padding:22px 16px 40px;
+    display:flex;flex-direction:column;align-items:center;gap:18px;
+    scroll-behavior:smooth;overscroll-behavior:contain;
+  }
+  @media (prefers-reduced-motion:reduce){.deck{scroll-behavior:auto}}
+
+  .page{
+    position:relative;background:var(--paper);box-shadow:var(--shadow-paper);
+    border-radius:2px;flex:0 0 auto;
+  }
+  .page canvas{display:block;width:100%;height:100%;border-radius:2px}
+  .page .layer{position:absolute;inset:0;overflow:visible}
+  .page .guides{position:absolute;inset:0;pointer-events:none;overflow:visible}
+  .page .pnum{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:-17px;
+    font-family:var(--mono);font-size:11px;color:var(--ink-3);pointer-events:none;
+  }
+  .page.busy::after{
+    content:"";position:absolute;inset:0;background:var(--paper);
+    background-image:linear-gradient(100deg,transparent 30%,rgba(0,0,0,.045) 50%,transparent 70%);
+    background-size:220% 100%;animation:sweep 1.1s linear infinite;border-radius:2px;
+  }
+  @keyframes sweep{to{background-position:-220% 0}}
+  @media (prefers-reduced-motion:reduce){.page.busy::after{animation:none}}
+
+  /* ---- elementos sobre la página ---- */
+  .el{
+    position:absolute;transform-origin:center center;cursor:move;
+    touch-action:none;outline:none;
+  }
+  .el .body{
+    display:block;white-space:pre;font-kerning:none;
+    -webkit-font-smoothing:antialiased;
+  }
+  .el.text .body{padding:0;margin:0;min-width:6px;min-height:1em;caret-color:var(--accent)}
+  /* un texto sin contenido se marca para que no quede una caja invisible */
+  .el.text .body:empty{min-width:26px;box-shadow:inset 0 -1px 0 var(--guide)}
+  .el.image .body{width:100%;height:100%}
+  .el.image img{display:block;width:100%;height:100%;-webkit-user-drag:none;user-select:none}
+  .el::after{
+    content:"";position:absolute;inset:-3px;border:1px solid transparent;border-radius:3px;
+    pointer-events:none;transition:border-color .1s ease;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .el:hover::after{border-color:var(--accent-tint)}
+    @supports (color: color-mix(in srgb, red 50%, transparent)){
+      .el:hover::after{border-color:color-mix(in srgb, var(--accent) 45%, transparent)}
+    }
+  }
+  .el.sel::after{border-color:var(--accent);border-width:1.5px}
+  .el:focus-visible::after{border-color:var(--accent);border-width:2px}
+  .el.editing{cursor:text}
+  .el.editing::after{border-color:var(--accent);border-style:dashed}
+  .el.warn::after{border-color:var(--guide);border-style:dashed}
+
+  .h{
+    position:absolute;width:13px;height:13px;background:var(--panel);
+    border:1.5px solid var(--accent);border-radius:3px;display:none;
+    touch-action:none;box-shadow:0 1px 2px rgba(0,0,0,.2);
+  }
+  .el.sel > .h{display:block}
+  .h-nw{left:-9px;top:-9px;cursor:nwse-resize}
+  .h-ne{right:-9px;top:-9px;cursor:nesw-resize}
+  .h-sw{left:-9px;bottom:-9px;cursor:nesw-resize}
+  .h-se{right:-9px;bottom:-9px;cursor:nwse-resize}
+  .h-rot{
+    left:50%;top:-30px;margin-left:-7px;border-radius:50%;cursor:grab;
+    background:var(--accent);border-color:var(--panel);
+  }
+  .h-rot::before{
+    content:"";position:absolute;left:50%;top:100%;width:1.5px;height:17px;
+    background:var(--accent);transform:translateX(-50%);
+  }
+  @media (pointer:coarse){
+    .h{width:20px;height:20px}
+    .h-nw{left:-13px;top:-13px}.h-ne{right:-13px;top:-13px}
+    .h-sw{left:-13px;bottom:-13px}.h-se{right:-13px;bottom:-13px}
+    .h-rot{top:-38px;margin-left:-10px}
+  }
+
+  /* ---- guías de enganche ---- */
+  .guide{position:absolute;background:var(--guide);pointer-events:none}
+  .guide.h{width:100%;height:1px;left:0;display:block;border:0;box-shadow:none;border-radius:0}
+  .guide.v{width:1px;height:100%;top:0;display:block;border:0;box-shadow:none;border-radius:0}
+  .guide-tag{
+    position:absolute;background:var(--guide);color:#fff;font-family:var(--mono);font-size:10px;
+    padding:1px 5px;border-radius:4px;pointer-events:none;white-space:nowrap;transform:translateY(-50%);
+  }
+  /* Sombra del widget de un campo de formulario nativo */
+  .widget{
+    position:absolute;border:1px dashed var(--ok);border-radius:2px;pointer-events:none;
+    background:color-mix(in srgb, var(--ok) 9%, transparent);
+  }
+  .widget-fill{
+    position:absolute;pointer-events:none;overflow:hidden;color:#111;
+    font-family:Helvetica,Arial,sans-serif;display:flex;align-items:center;padding:0 2px;
+  }
+  .widget-fill.check{justify-content:center;padding:0}
+  .widget-fill.check .ic{width:var(--tick,14px);height:var(--tick,14px);stroke-width:2.6}
+
+  /* ---- panel derecho ---- */
+  .side{
+    flex:0 0 auto;width:278px;background:var(--panel);border-left:1px solid var(--line);
+    display:flex;flex-direction:column;min-height:0;
+    padding-right:calc(0px + env(safe-area-inset-right));
+  }
+  .tabs{display:flex;gap:2px;padding:8px;border-bottom:1px solid var(--line);flex:0 0 auto}
+  .tabs button{
+    flex:1;border:0;background:transparent;color:var(--ink-3);border-radius:8px;
+    height:30px;font-size:12.5px;font-weight:640;cursor:pointer;transition:background .13s,color .13s;
+  }
+  .tabs button[aria-selected="true"]{background:var(--panel-3);color:var(--ink)}
+  @media (hover:hover){.tabs button:hover{color:var(--ink)}}
+  .pane{flex:1;min-height:0;overflow-y:auto;padding:14px 14px 22px}
+  .pane[hidden]{display:none}
+  .grp{margin:0 0 18px}
+  .grp:last-child{margin-bottom:0}
+  .grp h3{
+    margin:0 0 9px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);
+    display:flex;align-items:center;gap:6px;
+  }
+  .grp h3 .ic{width:14px;height:14px;stroke-width:1.9}
+  .row{display:flex;align-items:center;gap:8px;margin:0 0 9px}
+  .row:last-child{margin-bottom:0}
+  .row label{flex:0 0 62px;font-size:12.5px;color:var(--ink-2)}
+  .field{
+    flex:1;min-width:0;height:32px;padding:0 9px;border:1px solid var(--line-2);border-radius:8px;
+    background:var(--panel-2);font-size:13.5px;
+  }
+  textarea.field{height:auto;padding:7px 9px;resize:vertical;font-family:var(--ui);line-height:1.4}
+  .field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
+  .num{font-family:var(--mono);text-align:right}
+  input[type=range]{flex:1;min-width:0;accent-color:var(--accent);height:32px}
+  .swatches{display:flex;gap:6px;flex-wrap:wrap}
+  .sw{
+    width:26px;height:26px;border-radius:7px;border:1px solid var(--line-2);cursor:pointer;padding:0;
+    position:relative;
+  }
+  .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+  .seg{display:flex;gap:2px;background:var(--panel-3);border-radius:9px;padding:2px;flex:1}
+  .seg button{
+    flex:1;border:0;background:transparent;color:var(--ink-2);border-radius:7px;height:26px;
+    font-size:12.5px;font-weight:640;cursor:pointer;
+  }
+  .seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .hint{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--ink-3)}
+  .hint kbd{
+    font-family:var(--mono);font-size:11px;background:var(--panel-3);border:1px solid var(--line-2);
+    border-bottom-width:2px;border-radius:5px;padding:0 4px;color:var(--ink-2);
+  }
+  .empty-pane{padding:26px 6px;text-align:center;color:var(--ink-3);font-size:13px;line-height:1.55}
+
+  /* ---- mis datos ---- */
+  .grp h3 .lnk{
+    margin-left:auto;background:transparent;border:0;color:var(--accent);cursor:pointer;
+    font-size:11.5px;font-weight:700;letter-spacing:.01em;text-transform:none;
+    padding:3px 6px;border-radius:7px;display:flex;align-items:center;gap:4px;
+  }
+  .grp h3 .lnk .ic{width:13px;height:13px;stroke-width:1.9}
+  .grp h3 .lnk[hidden]{display:none}
+  @media (hover:hover){.grp h3 .lnk:hover{background:var(--accent-tint)}}
+
+  .datos{display:flex;flex-direction:column;gap:6px}
+  .dato{display:flex;gap:6px;align-items:center}
+  .dato .put{
+    flex:1;min-width:0;text-align:left;height:34px;padding:0 10px;border-radius:9px;
+    border:1px solid var(--line-2);background:var(--panel-2);cursor:pointer;font-size:13px;
+    display:flex;flex-direction:column;justify-content:center;gap:1px;overflow:hidden;
+  }
+  .dato .put b{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);display:block}
+  .dato .put > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .dato .put.vacio > span{color:var(--ink-3);font-weight:400;font-style:italic}
+  /* las firmas guardadas llevan su ícono al lado */
+  .dato .put.stamp{flex-direction:row;align-items:center;gap:9px}
+  .dato .put.stamp .ic{color:var(--accent)}
+  .dato .put.stamp .txt{min-width:0;display:flex;flex-direction:column;gap:1px}
+  .dato .put.stamp .txt span{font-size:11.5px;font-weight:400;color:var(--ink-3);font-family:var(--mono)}
+  @media (hover:hover){.dato .put:hover{background:var(--panel-3);border-color:var(--accent)}}
+  .dato .put .ic{flex:0 0 auto}
+
+  /* estado sin datos: invita a llenarlos una sola vez */
+  .empty-datos{
+    text-align:center;padding:20px 14px;border:1px dashed var(--line-2);
+    border-radius:13px;background:var(--panel-2);
+  }
+  .empty-datos .ic{width:26px;height:26px;margin:0 auto 9px;color:var(--ink-3)}
+  .empty-datos b{display:block;font-size:13.5px;margin:0 0 4px}
+  .empty-datos span{display:block;font-size:12.3px;line-height:1.5;color:var(--ink-3);margin:0 0 13px}
+
+  /* formulario de edición */
+  .dform{display:flex;flex-direction:column;gap:11px}
+  .dform[hidden]{display:none}
+  .dfield > span,
+  .dfield > .lblrow{display:flex;align-items:center;gap:5px;margin:0 0 4px}
+  .dfield > span{font-size:11.5px;font-weight:640;color:var(--ink-2)}
+  .dfield input.field{width:100%}
+  .dfield input.lbl{
+    flex:1;min-width:0;height:26px;font-size:11.5px;font-weight:640;padding:0 7px;
+    border:1px dashed var(--line-2);border-radius:7px;background:transparent;color:var(--ink-2);
+  }
+  .dfield input.lbl:focus{outline:none;border-style:solid;border-color:var(--accent);background:var(--panel-2)}
+  .dfield .del{
+    flex:0 0 auto;width:24px;height:24px;border:0;border-radius:7px;background:transparent;
+    color:var(--ink-3);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .dfield .del .ic{width:13px;height:13px;stroke-width:2}
+  @media (hover:hover){.dfield .del:hover{background:var(--danger-tint);color:var(--danger)}}
+  .dform .add{
+    display:flex;align-items:center;justify-content:center;gap:6px;height:34px;
+    border:1px dashed var(--line-2);border-radius:10px;background:transparent;
+    color:var(--ink-2);cursor:pointer;font-size:12.5px;font-weight:600;
+  }
+  .dform .add .ic{width:14px;height:14px}
+  @media (hover:hover){.dform .add:hover{border-color:var(--accent);color:var(--accent);border-style:solid}}
+  .dform .close{
+    display:flex;gap:8px;margin-top:3px;padding-top:12px;border-top:1px solid var(--line);
+  }
+  .dform .close .btn{flex:1;height:36px}
+  .dform .wipe{
+    background:transparent;border:0;color:var(--ink-3);font-size:11.5px;cursor:pointer;
+    padding:6px 0 0;display:flex;align-items:center;gap:5px;justify-content:center;
+  }
+  .dform .wipe .ic{width:13px;height:13px}
+  @media (hover:hover){.dform .wipe:hover{color:var(--danger)}}
+
+  /* ---- campos AcroForm ---- */
+  .fld{margin:0 0 12px}
+  .fld > label{display:block;font-size:12px;font-weight:640;color:var(--ink-2);margin:0 0 4px;overflow-wrap:anywhere}
+  .fld .field{width:100%}
+  .fld .check{display:flex;align-items:center;gap:8px;font-size:13px}
+  .fld .check input{width:18px;height:18px;accent-color:var(--accent)}
+  .fld .ir{
+    background:transparent;border:0;color:var(--accent);font-size:11.5px;font-weight:640;
+    cursor:pointer;padding:2px 0;margin-top:2px;display:flex;align-items:center;gap:2px;
+  }
+  .fld .ir .ic{width:13px;height:13px;stroke-width:2}
+
+  /* ---- barra inferior de zoom ---- */
+  .zoombar{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;justify-content:center;
+    padding:7px 12px calc(7px + env(safe-area-inset-bottom));
+    background:var(--panel);border-top:1px solid var(--line);font-size:12.5px;
+  }
+  .zoombar .lvl{font-family:var(--mono);min-width:52px;text-align:center;color:var(--ink-2)}
+  .zoombar .pg{font-family:var(--mono);color:var(--ink-2);min-width:64px;text-align:center}
+  .zoombar .gap{width:1px;height:20px;background:var(--line);margin:0 3px}
+  .btn.mono{font-family:var(--mono);font-size:12.5px;letter-spacing:-.02em}
+
+  /* ================= Pantalla vacía ================= */
+  .welcome{
+    position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:0;padding:24px;background:var(--desk);
+    overflow-y:auto;
+  }
+  .drop{
+    width:min(560px,100%);border:2px dashed var(--line-2);border-radius:22px;background:var(--panel);
+    padding:44px 28px;text-align:center;box-shadow:var(--shadow);
+    transition:border-color .15s ease,background .15s ease;
+  }
+  .drop.over{border-color:var(--accent);background:var(--accent-tint)}
+  .drop h2{margin:0 0 6px;font-size:clamp(19px,3.4vw,23px);font-weight:680;letter-spacing:-.022em}
+  .drop p{margin:0 0 20px;color:var(--ink-2);font-size:14.5px;line-height:1.5}
+  .drop .btn{height:40px;padding:0 18px;font-size:14.5px}
+  .privacy{
+    width:min(560px,100%);margin:18px 0 0;display:flex;gap:10px;align-items:flex-start;
+    padding:13px 15px;border-radius:13px;background:var(--panel);border:1px solid var(--line);
+  }
+  .privacy .ic{margin-top:1px;color:var(--ok)}
+  .privacy p{margin:0;font-size:12.8px;line-height:1.55;color:var(--ink-2)}
+  .privacy b{color:var(--ink)}
+  .welcome .credit{margin-top:20px}
+
+  /* ================= Créditos ================= */
+  .credit{text-align:center}
+  .credit p{margin:0;font-size:11.5px;color:var(--ink-3);line-height:1.6}
+  .credit .sep{opacity:.5;padding:0 6px}
+  .credit a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line-2);transition:color .15s,border-color .15s}
+  .credit a:active{color:var(--accent);border-color:var(--accent)}
+  @media (hover:hover){.credit a:hover{color:var(--accent);border-color:var(--accent)}}
+  .side .credit{padding:12px 10px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);flex:0 0 auto}
+
+  /* ================= Diálogos ================= */
+  .scrim{
+    position:fixed;inset:0;background:var(--scrim);z-index:80;
+    display:flex;align-items:center;justify-content:center;padding:18px;
+    opacity:0;pointer-events:none;transition:opacity .16s ease;
+  }
+  .scrim.show{opacity:1;pointer-events:auto}
+  .modal{
+    background:var(--panel);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.35);
+    width:min(560px,100%);max-height:calc(100dvh - 36px);overflow-y:auto;
+    padding:20px;transform:translateY(8px) scale(.985);transition:transform .16s ease;
+  }
+  .scrim.show .modal{transform:none}
+  @media (prefers-reduced-motion:reduce){.scrim,.modal{transition:none}}
+  .modal h2{margin:0 0 4px;font-size:18px;font-weight:680;letter-spacing:-.02em}
+  .modal .sub{margin:0 0 16px;font-size:13.5px;color:var(--ink-2);line-height:1.5}
+  .modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+  .modal .acts .btn{height:38px;padding:0 15px}
+  .modal .acts .spread{margin-right:auto}
+
+  /* firma */
+  .padwrap{
+    position:relative;background:#FFF;border:1px solid var(--line-2);border-radius:13px;overflow:hidden;
+    background-image:linear-gradient(45deg,#EFEFEF 25%,transparent 25%,transparent 75%,#EFEFEF 75%),
+                     linear-gradient(45deg,#EFEFEF 25%,transparent 25%,transparent 75%,#EFEFEF 75%);
+    background-size:14px 14px;background-position:0 0,7px 7px;
+  }
+  .padwrap canvas{display:block;width:100%;height:210px;touch-action:none;cursor:crosshair}
+  .padwrap .baseline{
+    position:absolute;left:7%;right:7%;bottom:52px;border-bottom:1px dashed #B9C0C9;pointer-events:none;
+  }
+  .padwrap .ph{
+    position:absolute;left:0;right:0;bottom:22px;text-align:center;color:#98A0AA;font-size:13px;pointer-events:none;
+  }
+  .seg button{display:flex;align-items:center;justify-content:center;gap:6px}
+  .seg .ic{width:15px;height:15px}
+  /* caja para elegir la foto de la firma */
+  .pickbox{
+    width:100%;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:26px 18px;border:2px dashed var(--line-2);border-radius:14px;
+    background:var(--panel-2);color:var(--ink);cursor:pointer;
+    transition:border-color .14s ease,background .14s ease;
+  }
+  .pickbox .ic{width:24px;height:24px;margin-bottom:5px;color:var(--ink-3)}
+  .pickbox b{font-size:14px;font-weight:640}
+  .pickbox span{font-size:12px;color:var(--ink-3)}
+  @media (hover:hover){.pickbox:hover{border-color:var(--accent);background:var(--accent-tint)}}
+  @media (hover:hover){.pickbox:hover .ic{color:var(--accent)}}
+
+  /* recorte de fondo */
+  .cutwrap{
+    display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center;
+  }
+  .cutbox{
+    background-image:linear-gradient(45deg,#E6E6E6 25%,transparent 25%,transparent 75%,#E6E6E6 75%),
+                     linear-gradient(45deg,#E6E6E6 25%,transparent 25%,transparent 75%,#E6E6E6 75%);
+    background-size:12px 12px;background-position:0 0,6px 6px;background-color:#FFF;
+    border:1px solid var(--line-2);border-radius:11px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;min-height:130px;padding:6px;
+  }
+  .cutbox canvas,.cutbox img{max-width:100%;max-height:180px;display:block}
+  .cutcap{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);text-align:center;margin:0 0 5px}
+
+  /* error / aviso dentro de un diálogo */
+  .alert{
+    display:flex;gap:9px;padding:11px 13px;border-radius:11px;background:var(--danger-tint);
+    border:1px solid color-mix(in srgb, var(--danger) 32%, transparent);margin:0 0 14px;
+  }
+  .alert .ic{margin-top:1px;color:var(--danger)}
+  .alert p{margin:0;font-size:13px;line-height:1.5;color:var(--ink)}
+  .alert p b{display:block;margin-bottom:2px}
+  .alert.info{background:var(--accent-tint);border-color:color-mix(in srgb, var(--accent) 30%, transparent)}
+  .alert.info .ic{color:var(--ok)}
+  .alert.warn{background:color-mix(in srgb, var(--guide) 12%, transparent);border-color:color-mix(in srgb, var(--guide) 32%, transparent)}
+
+  /* banner permanente sobre la mesa */
+  .banner{
+    flex:0 0 auto;display:flex;gap:9px;align-items:flex-start;padding:10px 14px;
+    background:color-mix(in srgb, var(--guide) 12%, var(--panel));
+    border-bottom:1px solid color-mix(in srgb, var(--guide) 30%, transparent);font-size:13px;line-height:1.45;
+  }
+  .banner p{margin:0;flex:1}
+  .banner > .ic{margin-top:1px;color:var(--guide)}
+  .banner .x{
+    flex:0 0 auto;border:0;background:transparent;color:var(--ink-2);cursor:pointer;
+    padding:2px;border-radius:6px;display:flex;
+  }
+  @media (hover:hover){.banner .x:hover{color:var(--ink);background:var(--tint,rgba(0,0,0,.06))}}
+
+  /* ================= Toast ================= */
+  .toast{
+    position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,14px);
+    z-index:90;max-width:min(460px,calc(100vw - 28px));display:flex;align-items:center;gap:12px;
+    padding:11px 15px;border-radius:13px;background:#181C22;color:#fff;font-size:14px;
+    box-shadow:0 12px 34px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;
+  }
+  :root[data-theme="dark"] .toast{background:#2B313A}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .toast{background:#2B313A}}
+  .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .toast span{overflow:hidden;text-overflow:ellipsis}
+  .toast button{flex:0 0 auto;border:0;background:transparent;color:#7FE3B6;font-weight:700;cursor:pointer;padding:2px 4px;border-radius:6px}
+
+  /* ================= Móvil ================= */
+  .sheet-handle{display:none}
+  #sheetBtn{display:none}
+  @media (max-width:900px){
+    .side{width:242px}
+    .rail{width:66px}
+    .tool{font-size:10px}
+  }
+  @media (max-width:720px){
+    .brand span:not(.mark){display:none}
+    .body{flex-direction:column}
+    .rail{
+      order:3;width:auto;flex-direction:row;border-right:0;border-top:1px solid var(--line);
+      padding:6px 8px calc(6px + env(safe-area-inset-bottom));overflow-x:auto;gap:2px;
+    }
+    .rail .sep{width:1px;height:auto;margin:4px 6px;flex:0 0 auto}
+    .tool{flex:1 0 60px;padding:6px 4px 5px}
+    .stage{order:1}
+    .zoombar{order:2;padding-bottom:7px}
+    /* el inspector sube como hoja inferior */
+    .side{
+      order:4;position:fixed;left:0;right:0;bottom:0;width:auto;z-index:60;
+      border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0;
+      max-height:min(62dvh,460px);box-shadow:0 -10px 40px rgba(0,0,0,.28);
+      transform:translateY(102%);transition:transform .2s cubic-bezier(.32,.72,0,1);
+    }
+    .side.up{transform:none}
+    @media (prefers-reduced-motion:reduce){.side{transition:none}}
+    .sheet-handle{
+      display:block;width:38px;height:4px;border-radius:99px;background:var(--line-2);
+      margin:8px auto 0;flex:0 0 auto;
+    }
+    #sheetBtn{display:inline-flex}
+    .side .credit{display:none}
+    .deck{padding:14px 10px 30px}
+  }
+  /* En pantalla angosta el nombre del archivo importa más que la palabra
+     "Descargar": el botón se queda solo con su ícono. */
+  @media (max-width:620px){
+    #save .lbl{display:none}
+    #save{width:36px;padding:0;font-size:16px}
+    .tool{flex:1 0 52px}
+  }
+  @media (max-width:420px){
+    .topbar{gap:7px;padding-left:10px;padding-right:10px}
+    .doc .fmeta{display:none}
+    .theme button{width:27px}
+  }
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ================= Sprite de íconos ================= -->
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><defs>
+  <symbol id="i-nib" viewBox="0 0 24 24"><path d="M9 3.5h6l2.4 11L12 20.5 6.6 14.5z"/><path d="M12 12.6v7.9"/><circle cx="12" cy="10.3" r="1.5"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5.5 3.2 18.8 11l-6 1.3-2.5 5.9z"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7.4V5h14v2.4"/><path d="M12 5v14"/><path d="M9 19h6"/></symbol>
+  <symbol id="i-sign" viewBox="0 0 24 24"><path d="M3 15.6c2.6 0 3.1-8.6 5.4-8.6s1.4 8.6 3.6 8.6 2.7-4.8 4.5-4.8 1.8 2.9 2.7 2.9"/><path d="M3.5 20h17"/></symbol>
+  <symbol id="i-finger" viewBox="0 0 24 24"><path d="M3.3 19.8 3.9 16.8A9 9 0 1 1 20.1 16.8l.6 3"/><path d="M5.9 18.8 6.4 15.6A6.2 6.2 0 1 1 17.6 15.6l.5 3.2"/><path d="M8.6 17.6 8.9 14.4A3.4 3.4 0 1 1 15.1 14.4l.3 3.2"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.2" y="4.6" width="17.6" height="14.8" rx="2.6"/><circle cx="8.6" cy="10" r="1.5"/><path d="M3.6 17.3 9 12.4l3.4 2.9 3-2.4 5 4.4"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.2 9.2V6.6a1.6 1.6 0 0 1 1.6-1.6h4l2.2 2.6h6.4A1.6 1.6 0 0 1 19 9.2v.6"/><path d="M3.2 9.8h17.1a1 1 0 0 1 1 1.2l-1.5 7.2a1.6 1.6 0 0 1-1.6 1.3H4.8a1.6 1.6 0 0 1-1.6-1.6z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.6v10.8"/><path d="m7.6 10.4 4.4 4.4 4.4-4.4"/><path d="M4.6 19.6h14.8"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 20V9"/><path d="m7.6 13 4.4-4.4L16.4 13"/><path d="M4.6 4.6h14.8"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4.2 9.2h9.3a5.4 5.4 0 0 1 0 10.8H8.4"/><path d="M8.2 4.6 3.6 9.2l4.6 4.6"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M19.8 9.2h-9.3a5.4 5.4 0 0 0 0 10.8h5.1"/><path d="m15.8 4.6 4.6 4.6-4.6 4.6"/></symbol>
+  <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M12 3.8a8.2 8.2 0 0 0 0 16.4z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.9"/><path d="M12 2.4v2.1M12 19.5v2.1M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2.4 12h2.1M19.5 12h2.1M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.4 14.6A8.6 8.6 0 0 1 9.4 3.6a8.6 8.6 0 1 0 11 11z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.4" y="10.2" width="15.2" height="9.8" rx="2.6"/><path d="M8.2 10.2V7.6a3.8 3.8 0 0 1 7.6 0v2.6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.6 4.2 2.9 17.4a1.6 1.6 0 0 0 1.4 2.4h15.4a1.6 1.6 0 0 0 1.4-2.4L13.4 4.2a1.6 1.6 0 0 0-2.8 0z"/><path d="M12 9.6v3.9"/><path d="M12 16.6h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="m8.2 12.2 2.7 2.7 5-5.4"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="m4.8 12.6 5 5.2L19.2 6.4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.6 6.8h14.8"/><path d="M9.6 6.8V5.4A1.4 1.4 0 0 1 11 4h2a1.4 1.4 0 0 1 1.4 1.4v1.4"/><path d="M6.6 6.8v11.8A1.4 1.4 0 0 0 8 20h8a1.4 1.4 0 0 0 1.4-1.4V6.8"/><path d="M10.4 10.6v5.6M13.6 10.6v5.6"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 8.4h8.4M17.2 8.4h2.8M4 15.6h3.2M12 15.6h8"/><circle cx="14.8" cy="8.4" r="2.4"/><circle cx="9.6" cy="15.6" r="2.4"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="m4 20.4 1-4.1L16.4 4.9a2.1 2.1 0 0 1 3 3L8 19.4z"/><path d="m14.6 6.7 2.7 2.7"/></symbol>
+  <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="M14.6 5.4 8 12l6.6 6.6"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9.4 5.4 16 12l-6.6 6.6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.4v13.2M5.4 12h13.2"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5.4 12h13.2"/></symbol>
+  <symbol id="i-fit-width" viewBox="0 0 24 24"><path d="M3.4 5.2v13.6M20.6 5.2v13.6"/><path d="M7.6 12h8.8"/><path d="m10.2 8.8-3.2 3.2 3.2 3.2M13.8 8.8l3.2 3.2-3.2 3.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6.4 6.4 11.2 11.2M17.6 6.4 6.4 17.6"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="3.9"/><path d="M4.6 20.4a7.4 7.4 0 0 1 14.8 0"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.6" y="5.4" width="16.8" height="15" rx="2.4"/><path d="M3.6 10.2h16.8M8.4 3.4v4M15.6 3.4v4"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m8.6 19.6-4.2-4.2a1.8 1.8 0 0 1 0-2.5l8.4-8.4a1.8 1.8 0 0 1 2.5 0l4.2 4.2a1.8 1.8 0 0 1 0 2.5l-8.4 8.4z"/><path d="M4.6 19.6h14.8"/><path d="m9.6 8.4 6 6"/></symbol>
+</defs></svg>
+
+<header class="topbar">
+  <div class="brand"><svg class="ic" aria-hidden="true"><use href="#i-nib"/></svg><span>Tinta</span></div>
+
+  <div class="doc" id="docInfo" hidden>
+    <span class="fname" id="fname"></span>
+    <span class="fmeta" id="fmeta"></span>
+  </div>
+
+  <div class="tools-top">
+    <button class="btn icon" id="undo" type="button" disabled title="Deshacer (⌘Z)" aria-label="Deshacer"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg></button>
+    <button class="btn icon" id="redo" type="button" disabled title="Rehacer (⇧⌘Z)" aria-label="Rehacer"><svg class="ic" aria-hidden="true"><use href="#i-redo"/></svg></button>
+    <div class="theme" role="group" aria-label="Apariencia">
+      <button type="button" data-theme-btn="auto" aria-pressed="true" title="Automático" aria-label="Apariencia automática"><svg class="ic" aria-hidden="true"><use href="#i-auto"/></svg></button>
+      <button type="button" data-theme-btn="light" aria-pressed="false" title="Claro" aria-label="Modo claro"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg></button>
+      <button type="button" data-theme-btn="dark" aria-pressed="false" title="Oscuro" aria-label="Modo oscuro"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg></button>
+    </div>
+    <button class="btn primary" id="save" type="button" disabled title="Descargar el PDF diligenciado (⌘S)"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg><span class="lbl">Descargar</span></button>
+  </div>
+</header>
+
+<div class="body">
+
+  <nav class="rail" aria-label="Herramientas">
+    <button class="tool" id="tSelect" type="button" data-tool="select" aria-pressed="true" disabled title="Seleccionar y mover (V)"><svg class="ic" aria-hidden="true"><use href="#i-cursor"/></svg>Mover</button>
+    <button class="tool" id="tText"   type="button" data-tool="text"   aria-pressed="false" disabled title="Escribir sobre la página (T)"><svg class="ic" aria-hidden="true"><use href="#i-text"/></svg>Texto</button>
+    <button class="tool" id="tSign"   type="button" data-tool="sign"   aria-pressed="false" disabled title="Dibujar tu firma o subir una foto de ella"><svg class="ic" aria-hidden="true"><use href="#i-sign"/></svg>Firma</button>
+    <button class="tool" id="tPrint"  type="button" data-tool="print"  aria-pressed="false" disabled title="Subir la foto o el escaneo de tu huella digital"><svg class="ic" aria-hidden="true"><use href="#i-finger"/></svg>Huella</button>
+    <button class="tool" id="tImage"  type="button" data-tool="image"  aria-pressed="false" disabled title="Insertar una imagen: sello, foto, logo"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg>Imagen</button>
+    <div class="sep" aria-hidden="true"></div>
+    <button class="tool" id="tOpen"   type="button" title="Abrir otro PDF (⌘O)"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>Abrir</button>
+  </nav>
+
+  <main class="stage">
+
+    <div class="banner" id="banner" hidden>
+      <svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <p id="bannerText"></p>
+      <button class="x" type="button" id="bannerClose" aria-label="Cerrar aviso"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </div>
+
+    <div class="deck" id="deck" tabindex="-1"></div>
+
+    <div class="zoombar" id="zoombar" hidden>
+      <button class="btn icon ghost" id="zOut" type="button" aria-label="Alejar" title="Alejar"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
+      <span class="lvl" id="zLvl">100%</span>
+      <button class="btn icon ghost" id="zIn" type="button" aria-label="Acercar" title="Acercar"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+      <span class="gap" aria-hidden="true"></span>
+      <button class="btn ghost" id="zFit" type="button" title="Ajustar al ancho"><svg class="ic" aria-hidden="true"><use href="#i-fit-width"/></svg>Ancho</button>
+      <button class="btn ghost mono" id="zOne" type="button" title="Tamaño real (100%)" aria-label="Tamaño real">1:1</button>
+      <span class="gap" aria-hidden="true"></span>
+      <button class="btn icon ghost" id="pPrev" type="button" aria-label="Página anterior" title="Página anterior"><svg class="ic" aria-hidden="true"><use href="#i-chev-l"/></svg></button>
+      <span class="pg" id="pgLbl">1 / 1</span>
+      <button class="btn icon ghost" id="pNext" type="button" aria-label="Página siguiente" title="Página siguiente"><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+      <span class="gap" aria-hidden="true"></span>
+      <button class="btn ghost" id="sheetBtn" type="button" title="Propiedades"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Panel</button>
+    </div>
+
+    <!-- Pantalla vacía -->
+    <section class="welcome" id="welcome">
+      <div class="drop" id="drop">
+        <svg class="ic" aria-hidden="true"><use href="#i-nib"/></svg>
+        <h2>Trae tu PDF y suéltalo aquí</h2>
+        <p>Escribe sobre los renglones, firma a mano alzada, pon tu huella y descárgalo diligenciado.</p>
+        <button class="btn primary" id="pick" type="button">Buscar en el equipo</button>
+        <input type="file" id="file" accept="application/pdf,.pdf" class="sr" tabindex="-1">
+      </div>
+      <div class="privacy">
+        <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>
+        <p><b>El archivo no se sube a ningún lado.</b> Tinta no tiene servidor: el PDF se abre, se edita y se guarda dentro de esta pestaña, en tu equipo. Puedes desconectar el internet y seguir trabajando.</p>
+      </div>
+      <footer class="credit">
+        <p>© <span class="year">2026</span> <a href="https://linkedin.com/in/luis-alejandro-jaramillo-rincon" target="_blank" rel="noopener noreferrer" title="Perfil de LinkedIn">Luis Alejandro Jaramillo</a><span class="sep">·</span>Todos los derechos reservados</p>
+      </footer>
+    </section>
+
+  </main>
+
+  <aside class="side" id="side" hidden>
+    <div class="sheet-handle" id="sheetHandle" aria-hidden="true"></div>
+    <div class="tabs" role="tablist" aria-label="Panel lateral">
+      <button type="button" role="tab" id="tabProps" aria-selected="true"  aria-controls="paneProps">Propiedades</button>
+      <button type="button" role="tab" id="tabDatos" aria-selected="false" aria-controls="paneDatos">Mis datos</button>
+      <button type="button" role="tab" id="tabForm"  aria-selected="false" aria-controls="paneForm" hidden>Campos</button>
+    </div>
+
+    <div class="pane" id="paneProps" role="tabpanel" aria-labelledby="tabProps">
+      <div class="empty-pane" id="propsEmpty">
+        <svg class="ic" aria-hidden="true"><use href="#i-cursor"/></svg>
+        Selecciona algo sobre la página para ver sus propiedades, o elige una herramienta del riel.
+      </div>
+      <div id="propsBody" hidden></div>
+    </div>
+
+    <div class="pane" id="paneDatos" role="tabpanel" aria-labelledby="tabDatos" hidden>
+      <div class="grp">
+        <h3>
+          <svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>Mis datos
+          <button class="lnk" type="button" id="datosEdit"></button>
+        </h3>
+        <div class="datos" id="datosList"></div>
+        <div class="dform" id="datosForm" hidden></div>
+        <p class="hint" id="datosHint"></p>
+      </div>
+      <div class="grp">
+        <h3><svg class="ic" aria-hidden="true"><use href="#i-sign"/></svg>Firma y huella</h3>
+        <div class="datos" id="firmasList"></div>
+        <p class="hint">Lo que dibujes o subas queda a mano para el siguiente formulario, mientras no cierres esta pestaña. Al cerrarla se borra.</p>
+      </div>
+    </div>
+
+    <div class="pane" id="paneForm" role="tabpanel" aria-labelledby="tabForm" hidden>
+      <div class="alert info">
+        <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>
+        <p><b>Este PDF trae campos rellenables.</b> Llénalos acá y quedan escritos como texto de verdad. Al descargar se aplanan para que nadie los cambie después.</p>
+      </div>
+      <div id="fieldsList"></div>
+    </div>
+
+    <footer class="credit">
+      <p>© <span class="year">2026</span> <a href="https://linkedin.com/in/luis-alejandro-jaramillo-rincon" target="_blank" rel="noopener noreferrer" title="Perfil de LinkedIn">Luis Alejandro Jaramillo</a><span class="sep">·</span>Todos los derechos reservados</p>
+    </footer>
+  </aside>
+
+</div>
+
+<!-- ============ diálogo: firma ============
+     Una firma se puede dibujar o fotografiar. Una huella digital no se dibuja
+     nunca, así que esa herramienta va directo al selector de imágenes. -->
+<div class="scrim" id="signScrim" role="dialog" aria-modal="true" aria-labelledby="signTitle" hidden>
+  <div class="modal">
+    <h2 id="signTitle">Tu firma</h2>
+    <p class="sub">Dibújala acá mismo, o sube la foto de una firma que ya hiciste en papel.</p>
+
+    <div class="seg" role="group" aria-label="Cómo poner la firma" style="margin:0 0 14px">
+      <button type="button" id="signModeDraw" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-sign"/></svg>Dibujar</button>
+      <button type="button" id="signModeUp"  aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Subir foto</button>
+    </div>
+
+    <div id="signDraw">
+      <div class="padwrap">
+        <canvas id="pad" width="1000" height="420"></canvas>
+        <div class="baseline" aria-hidden="true"></div>
+        <div class="ph" id="padPh">Firma acá con el mouse, el dedo o el lápiz</div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <label for="padW">Grosor</label>
+        <input type="range" id="padW" min="1" max="8" step="0.5" value="3">
+        <span class="num" id="padWv" style="flex:0 0 34px;font-size:12px;color:var(--ink-3)">3</span>
+      </div>
+    </div>
+
+    <div id="signUp" hidden>
+      <button class="pickbox" type="button" id="signPick">
+        <svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>
+        <b>Elegir la foto de tu firma</b>
+        <span>PNG, JPG o WebP</span>
+      </button>
+      <p class="hint">Fírmala en una hoja blanca y tómale la foto de frente y con buena luz. Al subirla te dejo quitarle el papel de fondo, para que sobre el formulario solo quede el trazo.</p>
+    </div>
+
+    <div class="acts">
+      <button class="btn spread" id="padClear" type="button"><svg class="ic" aria-hidden="true"><use href="#i-eraser"/></svg>Borrar</button>
+      <button class="btn" id="padCancel" type="button">Cancelar</button>
+      <button class="btn primary" id="padOk" type="button" disabled>Poner en la página</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ diálogo: quitar fondo de una imagen ============ -->
+<div class="scrim" id="cutScrim" role="dialog" aria-modal="true" aria-labelledby="cutTitle" hidden>
+  <div class="modal">
+    <h2 id="cutTitle">Quitar el fondo</h2>
+    <p class="sub" id="cutSub">Las fotos de huellas y firmas traen el papel de fondo. Sube el umbral hasta que solo quede el trazo.</p>
+    <div class="cutwrap">
+      <div>
+        <p class="cutcap">Original</p>
+        <div class="cutbox"><img id="cutSrc" alt="Imagen original"></div>
+      </div>
+      <div>
+        <p class="cutcap">Resultado</p>
+        <div class="cutbox"><canvas id="cutOut"></canvas></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label for="cutT">Umbral</label>
+      <input type="range" id="cutT" min="0" max="255" step="1" value="0">
+      <span class="num" id="cutTv" style="flex:0 0 34px;font-size:12px;color:var(--ink-3)">0</span>
+    </div>
+    <p class="hint" id="cutHint">En 0 la imagen queda tal cual. Sube hasta que el papel desaparezca y el trazo siga completo.</p>
+    <div class="acts">
+      <button class="btn" id="cutCancel" type="button">Cancelar</button>
+      <button class="btn primary" id="cutOk" type="button">Poner en la página</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ diálogo: contraseña ============ -->
+<div class="scrim" id="pwScrim" role="dialog" aria-modal="true" aria-labelledby="pwTitle" hidden>
+  <div class="modal" style="width:min(430px,100%)">
+    <h2 id="pwTitle">Este PDF pide contraseña</h2>
+    <p class="sub" id="pwSub">Está protegido para abrirse. Escribe la contraseña de apertura para poder verlo.</p>
+    <div class="alert" id="pwErr" hidden>
+      <svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <p><b>Esa contraseña no sirve.</b> Revisa mayúsculas y espacios, o pide el archivo sin protección.</p>
+    </div>
+    <input type="password" class="field" id="pwInput" style="width:100%;height:38px" autocomplete="off" placeholder="Contraseña de apertura" aria-label="Contraseña del PDF">
+    <div class="acts">
+      <button class="btn" id="pwCancel" type="button">Cancelar</button>
+      <button class="btn primary" id="pwOk" type="button">Abrir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ diálogo: error al abrir ============ -->
+<div class="scrim" id="errScrim" role="dialog" aria-modal="true" aria-labelledby="errTitle" hidden>
+  <div class="modal" style="width:min(470px,100%)">
+    <h2 id="errTitle">No pude abrir el archivo</h2>
+    <div class="alert">
+      <svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <p><b id="errWhat">Algo salió mal.</b><span id="errHow"></span></p>
+    </div>
+    <p class="hint" id="errTech" style="font-family:var(--mono);font-size:11px;word-break:break-word"></p>
+    <div class="acts">
+      <button class="btn primary" id="errOk" type="button">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span id="toastText"></span>
+  <button type="button" id="toastAction" hidden>Deshacer</button>
+</div>
+
+<input type="file" id="imgFile" accept="image/png,image/jpeg,image/webp" class="sr" tabindex="-1">
+
+<!-- =========================================================================
+     Librerías. En la versión publicada su código va inline acá adentro.
+     Ver inline.sh en esta misma carpeta para regenerarlo.
+     ========================================================================= -->
+<script src="./_libs/pdf.min.js"></script>
+<script src="./_libs/pdf-lib.min.js"></script>
+<script id="pdfWorkerSrc" type="text/plain" src="./_libs/pdf.worker.min.js"></script>
+
+<script>
+(function () {
+'use strict';
+
+/* =====================================================================
+   0 · Utilidades
+   ===================================================================== */
+
+var $ = function (id) { return document.getElementById(id); };
+var PDFLib = window.PDFLib;
+var pdfjsLib = window.pdfjsLib;
+
+document.querySelectorAll('.year').forEach(function (n) { n.textContent = new Date().getFullYear(); });
+
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function uid() { return 'e' + (uid.n = (uid.n || 0) + 1) + '_' + Math.random().toString(36).slice(2, 7); }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) {
+  return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+/* Ícono del sprite, para el HTML que se arma desde JS */
+function ic(name) { return '<svg class="ic" aria-hidden="true"><use href="#i-' + name + '"/></svg>'; }
+
+/* En Windows y Linux la tecla es Ctrl, no ⌘: los atajos se escriben como toque */
+var MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+var MOD = MAC ? '⌘' : 'Ctrl+';
+var SHIFT = MAC ? '⇧' : 'Shift+';
+document.querySelectorAll('[title]').forEach(function (n) {
+  if (n.title.indexOf('⌘') >= 0) n.title = n.title.replace(/⇧⌘/g, SHIFT + MOD).replace(/⌘/g, MOD);
+});
+
+var toastEl = $('toast'), toastText = $('toastText'), toastAction = $('toastAction'), toastTimer;
+function toast(msg, actionLabel, onAction, ms) {
+  clearTimeout(toastTimer);
+  toastText.textContent = msg;
+  if (actionLabel) {
+    toastAction.hidden = false;
+    toastAction.textContent = actionLabel;
+    toastAction.onclick = function () { hideToast(); onAction(); };
+  } else { toastAction.hidden = true; toastAction.onclick = null; }
+  toastEl.classList.add('show');
+  toastTimer = setTimeout(hideToast, ms || (actionLabel ? 6500 : 3200));
+}
+function hideToast() { toastEl.classList.remove('show'); clearTimeout(toastTimer); }
+
+/* Diálogos: foco atrapado y devuelto a donde estaba */
+var dialogStack = [];
+function openDialog(scrim, focusEl) {
+  var prev = document.activeElement;
+  scrim.hidden = false;
+  requestAnimationFrame(function () { scrim.classList.add('show'); });
+  dialogStack.push({ scrim: scrim, prev: prev });
+  if (focusEl) setTimeout(function () { focusEl.focus(); }, 40);
+}
+function closeDialog(scrim) {
+  var i = dialogStack.findIndex(function (d) { return d.scrim === scrim; });
+  var entry = i >= 0 ? dialogStack.splice(i, 1)[0] : null;
+  scrim.classList.remove('show');
+  setTimeout(function () { scrim.hidden = true; }, 180);
+  if (entry && entry.prev && entry.prev.focus) entry.prev.focus();
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape' || !dialogStack.length) return;
+  var top = dialogStack[dialogStack.length - 1];
+  if (top.scrim === $('pwScrim')) { cancelPassword(); return; }
+  closeDialog(top.scrim);
+  e.stopPropagation();
+}, true);
+document.querySelectorAll('.scrim').forEach(function (s) {
+  s.addEventListener('pointerdown', function (e) {
+    if (e.target !== s) return;
+    if (s === $('pwScrim')) { cancelPassword(); return; }
+    closeDialog(s);
+  });
+  /* foco circular dentro del diálogo */
+  s.addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab') return;
+    var f = s.querySelectorAll('button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])');
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+    else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+  });
+});
+
+function showError(what, how, tech) {
+  $('errWhat').textContent = what;
+  $('errHow').textContent = ' ' + how;
+  $('errTech').textContent = tech || '';
+  $('errTech').hidden = !tech;
+  openDialog($('errScrim'), $('errOk'));
+}
+$('errOk').onclick = function () { closeDialog($('errScrim')); };
+
+function showBanner(text) {
+  $('bannerText').textContent = text;
+  $('banner').hidden = false;
+}
+$('bannerClose').onclick = function () { $('banner').hidden = true; };
+
+/* =====================================================================
+   1 · Tema
+   ===================================================================== */
+
+var THEME_KEY = 'tinta.theme';
+function applyTheme(mode) {
+  document.documentElement.setAttribute('data-theme', mode);
+  document.querySelectorAll('[data-theme-btn]').forEach(function (b) {
+    b.setAttribute('aria-pressed', b.dataset.themeBtn === mode ? 'true' : 'false');
+  });
+}
+document.querySelectorAll('[data-theme-btn]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    applyTheme(b.dataset.themeBtn);
+    try { localStorage.setItem(THEME_KEY, b.dataset.themeBtn); } catch (e) {}
+  });
+});
+(function () {
+  var saved = 'auto';
+  try { saved = localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) {}
+  applyTheme(saved);
+})();
+
+/* =====================================================================
+   2 · Estado
+   ===================================================================== */
+
+var S = {
+  pdf: null,          // documento de pdf.js
+  bytes: null,        // bytes originales, para pdf-lib
+  name: '',
+  encrypted: false,   // pdf-lib no puede escribir sobre un PDF cifrado
+  pages: [],          // geometría por página
+  els: [],            // elementos puestos por el usuario
+  sel: null,          // id seleccionado
+  tool: 'select',
+  zoom: 1,
+  fit: 'width',       // 'width' | 'none'
+  page: 1,
+  form: null,         // { fields:[...] } si el PDF trae AcroForm
+  dirty: false
+};
+
+var PREFS_KEY = 'tinta.prefs.v1';
+var prefs = { size: 11, color: '#12305C', family: 'helv', bold: false };
+try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREFS_KEY) || '{}')); } catch (e) {}
+function savePrefs() { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {} }
+
+var COLORS = [
+  { hex: '#12305C', name: 'Azul de bolígrafo' },
+  { hex: '#111111', name: 'Negro' },
+  { hex: '#B01414', name: 'Rojo' },
+  { hex: '#1F6E3E', name: 'Verde' }
+];
+
+var FAMILIES = {
+  helv: { label: 'Helvetica', css: 'Helvetica, Arial, "Liberation Sans", sans-serif', std: 'Helvetica', stdB: 'Helvetica-Bold' },
+  times:{ label: 'Times',     css: '"Times New Roman", Times, "Liberation Serif", serif', std: 'Times-Roman', stdB: 'Times-Bold' },
+  cour: { label: 'Courier',   css: '"Courier New", Courier, "Liberation Mono", monospace', std: 'Courier', stdB: 'Courier-Bold' }
+};
+
+/* =====================================================================
+   3 · Pila de comandos (deshacer / rehacer)
+   ---------------------------------------------------------------------
+   Cada operación es un comando con do() y undo(). No se guardan copias
+   del estado completo. La selección viaja dentro del comando para que
+   deshacer devuelva también el foco a donde estaba.
+   ===================================================================== */
+
+var undoStack = [], redoStack = [], MAX_STACK = 200;
+
+function runCmd(cmd) {
+  cmd.do();
+  undoStack.push(cmd);
+  if (undoStack.length > MAX_STACK) undoStack.shift();
+  redoStack.length = 0;      // toda acción nueva limpia el rehacer
+  S.dirty = true;
+  syncHistory();
+  saveWork();
+}
+
+function undo() {
+  closeTypingBurst();
+  if (!undoStack.length) return;
+  var cmd = undoStack.pop();
+  cmd.undo();
+  redoStack.push(cmd);
+  if (cmd.selBefore !== undefined) restoreSel(cmd.selBefore);
+  syncHistory();
+  saveWork();
+  toast('Deshecho: ' + cmd.label);
+}
+
+function redo() {
+  closeTypingBurst();
+  if (!redoStack.length) return;
+  var cmd = redoStack.pop();
+  cmd.do();
+  undoStack.push(cmd);
+  if (cmd.selAfter !== undefined) restoreSel(cmd.selAfter);
+  syncHistory();
+  saveWork();
+  toast('Rehecho: ' + cmd.label);
+}
+
+function restoreSel(id) {
+  select(id, { silent: true });
+  if (id) {
+    var node = nodeOf(id);
+    if (node) { scrollElIntoView(node); node.focus({ preventScroll: true }); }
+  }
+}
+
+function syncHistory() {
+  var u = $('undo'), r = $('redo');
+  u.disabled = !undoStack.length;
+  r.disabled = !redoStack.length;
+  u.title = undoStack.length ? 'Deshacer ' + undoStack[undoStack.length - 1].label + ' (' + MOD + 'Z)' : 'No hay nada que deshacer';
+  r.title = redoStack.length ? 'Rehacer ' + redoStack[redoStack.length - 1].label + ' (' + SHIFT + MOD + 'Z)' : 'No hay nada que rehacer';
+  $('save').disabled = !S.pdf;
+}
+$('undo').onclick = undo;
+$('redo').onclick = redo;
+
+/* --- comandos concretos --- */
+
+function cmdAdd(el, label) {
+  var selBefore = S.sel;
+  return {
+    label: label || 'poner ' + typeName(el),
+    selBefore: selBefore, selAfter: el.id,
+    do: function () { S.els.push(el); mountEl(el); select(el.id); },
+    undo: function () { unmountEl(el.id); S.els = S.els.filter(function (e) { return e.id !== el.id; }); select(null); }
+  };
+}
+
+function cmdRemove(el) {
+  var idx = S.els.indexOf(el), selBefore = S.sel;
+  return {
+    label: 'eliminar ' + typeName(el),
+    selBefore: selBefore, selAfter: null,
+    do: function () { unmountEl(el.id); S.els = S.els.filter(function (e) { return e.id !== el.id; }); select(null); },
+    undo: function () { S.els.splice(idx, 0, el); mountEl(el); select(el.id); }
+  };
+}
+
+/* Un solo comando para cualquier cambio de propiedades: mover, redimensionar,
+   girar, cambiar tamaño, color, negrita o el texto mismo.
+   do y undo leen this.after y this.before, no las variables del closure: las
+   ráfagas de tecleo y de flechas van actualizando cmd.after mientras duran. */
+function cmdPatch(el, before, after, label) {
+  return {
+    label: label,
+    el: el, before: before, after: after,
+    selBefore: S.sel, selAfter: el.id,
+    do: function () { Object.assign(el, this.after); paintEl(el); select(el.id, { silent: true }); refreshProps(); },
+    undo: function () { Object.assign(el, this.before); paintEl(el); select(el.id, { silent: true }); refreshProps(); }
+  };
+}
+
+function typeName(el) {
+  return el.type === 'text' ? 'texto' : el.kind === 'sign' ? 'firma' : el.kind === 'print' ? 'huella' : 'imagen';
+}
+
+/* --- ráfaga de tecleo: un comando por ráfaga, no uno por carácter --- */
+var burst = null, BURST_MS = 900;
+function typingBurst(el, before) {
+  if (burst && burst.el === el) { clearTimeout(burst.timer); burst.timer = setTimeout(closeTypingBurst, BURST_MS); return burst; }
+  closeTypingBurst();
+  var cmd = cmdPatch(el, { text: before }, { text: before }, 'escribir');
+  /* El comando entra a la pila una sola vez; mientras dure la ráfaga se
+     actualiza su estado final en el sitio. */
+  undoStack.push(cmd);
+  if (undoStack.length > MAX_STACK) undoStack.shift();
+  redoStack.length = 0;
+  burst = { el: el, cmd: cmd, timer: setTimeout(closeTypingBurst, BURST_MS) };
+  syncHistory();
+  return burst;
+}
+function updateBurst(text) {
+  if (!burst) return;
+  burst.cmd.after = { text: text };
+  clearTimeout(burst.timer);
+  burst.timer = setTimeout(closeTypingBurst, BURST_MS);
+}
+function closeTypingBurst() {
+  if (!burst) return;
+  clearTimeout(burst.timer);
+  var cmd = burst.cmd;
+  burst = null;
+  /* Si la ráfaga terminó sin cambiar nada, se saca de la pila */
+  if (cmd.before.text === cmd.after.text) {
+    var i = undoStack.indexOf(cmd);
+    if (i >= 0) undoStack.splice(i, 1);
+    syncHistory();
+  } else {
+    S.dirty = true;
+    saveWork();
+  }
+}
+
+/* =====================================================================
+   4 · Geometría
+   ---------------------------------------------------------------------
+   Coordenadas de trabajo: "puntos de vista". Origen arriba a la izquierda
+   de la página ya rotada y recortada, y en puntos PDF (1/72"). Son
+   independientes del zoom y del devicePixelRatio.
+
+   Al exportar se aplica UNA matriz por página con concatTransformationMatrix
+   que lleva del espacio de vista (con y hacia arriba) al espacio de usuario
+   del PDF, contemplando /Rotate y un CropBox con origen distinto de cero.
+   ===================================================================== */
+
+function pageMatrix(rot, crop) {
+  var x0 = crop.x, y0 = crop.y, x1 = crop.x + crop.w, y1 = crop.y + crop.h;
+  switch (((rot % 360) + 360) % 360) {
+    case 90:  return [0, 1, -1, 0, x1, y0];
+    case 180: return [-1, 0, 0, -1, x1, y1];
+    case 270: return [0, -1, 1, 0, x0, y1];
+    default:  return [1, 0, 0, 1, x0, y0];
+  }
+}
+function matInv(m) {
+  var a = m[0], b = m[1], c = m[2], d = m[3], e = m[4], f = m[5], det = a * d - b * c;
+  return [d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det];
+}
+function matApply(m, x, y) { return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]; }
+
+/* Gira un punto alrededor de un centro, en grados y en el sentido de la pantalla */
+function rotPt(x, y, cx, cy, deg) {
+  var r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), dx = x - cx, dy = y - cy;
+  return [cx + dx * c - dy * s, cy + dx * s + dy * c];
+}
+
+/* Página → geometría. Se calcula con pdf-lib (la fuente de verdad al escribir)
+   y se contrasta con pdf.js (lo que el usuario ve). */
+function buildPageGeom(libPage, jsViewport) {
+  var media = libPage.getMediaBox();
+  var crop = libPage.getCropBox() || media;
+  /* pdf.js recorta el CropBox contra el MediaBox: hacemos lo mismo */
+  var x0 = Math.max(crop.x, media.x), y0 = Math.max(crop.y, media.y);
+  var x1 = Math.min(crop.x + crop.width, media.x + media.width);
+  var y1 = Math.min(crop.y + crop.height, media.y + media.height);
+  var c = { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+  var rot = ((libPage.getRotation().angle % 360) + 360) % 360;
+  var swap = rot === 90 || rot === 270;
+  var g = {
+    rot: rot, crop: c,
+    W: swap ? c.h : c.w,     // ancho visible en puntos
+    H: swap ? c.w : c.h,     // alto visible en puntos
+    M: pageMatrix(rot, c)
+  };
+  g.Minv = matInv(g.M);
+  if (jsViewport && (Math.abs(jsViewport.width - g.W) > 1 || Math.abs(jsViewport.height - g.H) > 1)) {
+    console.warn('Tinta: la geometría de pdf.js y pdf-lib no coincide', jsViewport.width, jsViewport.height, g.W, g.H);
+  }
+  return g;
+}
+
+/* vista (y hacia abajo, puntos) → espacio de usuario del PDF */
+function viewToUser(g, x, yDown) { return matApply(g.M, x, g.H - yDown); }
+/* espacio de usuario → vista (y hacia abajo) */
+function userToView(g, ux, uy) { var p = matApply(g.Minv, ux, uy); return [p[0], g.H - p[1]]; }
+
+/* =====================================================================
+   5 · Métricas de texto
+   ---------------------------------------------------------------------
+   La línea base se calcula con las métricas reales de la fuente que el
+   navegador está usando, medidas con canvas. Al fijar line-height a
+   (ascenso + descenso) el medio interlineado vale cero, así que la línea
+   base cae exactamente a "ascenso" del borde superior de la caja. Ese
+   mismo número se usa para escribir en el PDF: lo que se ve es donde cae.
+   ===================================================================== */
+
+var mCanvas = document.createElement('canvas').getContext('2d', { willReadFrequently: false });
+var metricCache = {};
+var PROBE = 200;
+
+function fontMetrics(familyKey, bold) {
+  var key = familyKey + (bold ? '|b' : '');
+  if (metricCache[key]) return metricCache[key];
+  var css = FAMILIES[familyKey].css;
+  mCanvas.font = (bold ? '700 ' : '400 ') + PROBE + 'px ' + css;
+  var m = mCanvas.measureText('Hxdpqß');
+  var asc = m.fontBoundingBoxAscent, desc = m.fontBoundingBoxDescent;
+  if (!(asc > 0) || !(desc >= 0)) {          // navegadores viejos
+    asc = m.actualBoundingBoxAscent || PROBE * 0.9;
+    desc = m.actualBoundingBoxDescent || PROBE * 0.21;
+  }
+  var r = { asc: asc / PROBE, desc: desc / PROBE };
+  metricCache[key] = r;
+  return r;
+}
+function measureLine(text, familyKey, bold, sizePt) {
+  mCanvas.font = (bold ? '700 ' : '400 ') + PROBE + 'px ' + FAMILIES[familyKey].css;
+  return mCanvas.measureText(text).width / PROBE * sizePt;
+}
+
+/* WinAnsi cubre el español completo. Se avisa de lo que no cabe (emoji, etc.). */
+var WINANSI_EXTRA = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ' +
+                    '‘’“”•–—˜™š›œžŸ';
+function unsupportedChars(str) {
+  var bad = [], seen = {};
+  for (var i = 0; i < str.length; i++) {
+    var c = str[i], cp = str.codePointAt(i);
+    if (cp > 0xFFFF) { i++; }
+    var ok = (cp >= 32 && cp <= 126) || (cp >= 0xA0 && cp <= 0xFF) || cp === 10 ||
+             WINANSI_EXTRA.indexOf(c) >= 0;
+    if (!ok && !seen[c]) { seen[c] = 1; bad.push(c); }
+  }
+  return bad;
+}
+
+/* Enganche para embeber una TTF propia:
+   1. Inlinea también fontkit (@pdf-lib/fontkit) y llama pdfDoc.registerFontkit(fontkit)
+   2. var f = await pdfDoc.embedFont(bytesTTF, { subset: true })
+   3. Agrega la entrada a FAMILIES con su css equivalente y usa f en drawText.
+   Con eso desaparece el límite de WinAnsi. */
+
+/* =====================================================================
+   6 · Carga del PDF
+   ===================================================================== */
+
+/* El worker va inline: se arma un Blob con su código. Si el navegador no deja
+   crear un worker desde un blob (típico al abrir el archivo con file://),
+   se ejecuta en el hilo principal, que es más lento pero funciona. */
+(function setupWorker() {
+  var srcNode = $('pdfWorkerSrc');
+  var code = srcNode ? srcNode.textContent : '';
+  if (!code || code.length < 1000) {
+    /* En desarrollo el worker se carga por src; pdf.js lo resuelve solo */
+    if (srcNode && srcNode.getAttribute('src')) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = srcNode.getAttribute('src');
+    }
+    return;
+  }
+  var url;
+  try { url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' })); } catch (e) {}
+  if (url) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = url;
+    try { new Worker(url).terminate(); }           // sonda: ¿deja crear workers?
+    catch (e) { (0, eval)(code); }                 // no: el código define globalThis.pdfjsWorker
+  } else { (0, eval)(code); pdfjsLib.GlobalWorkerOptions.workerSrc = 'inline'; }
+})();
+
+var pendingFile = null, pendingBytes = null;
+
+$('pick').onclick = function () { $('file').click(); };
+$('tOpen').onclick = function () { $('file').click(); };
+$('file').onchange = function (e) { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ''; };
+
+var drop = $('drop');
+['dragenter', 'dragover'].forEach(function (t) {
+  document.addEventListener(t, function (e) { e.preventDefault(); if (!S.pdf) drop.classList.add('over'); });
+});
+['dragleave', 'drop'].forEach(function (t) {
+  document.addEventListener(t, function (e) {
+    e.preventDefault();
+    if (t === 'dragleave' && e.relatedTarget) return;
+    drop.classList.remove('over');
+  });
+});
+document.addEventListener('drop', function (e) {
+  e.preventDefault();
+  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  if (/^image\//.test(f.type) && S.pdf) { startImageFlow(f, 'image'); return; }
+  openFile(f);
+});
+
+function openFile(file) {
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+    showError('Ese archivo no es un PDF.',
+      'Tinta solo abre PDFs. Si tienes una foto o un documento de Word, conviértelo a PDF primero y vuelve a intentarlo.',
+      file.name + ' · ' + (file.type || 'tipo desconocido'));
+    return;
+  }
+  if (file.size > 120 * 1024 * 1024) {
+    showError('El archivo es demasiado grande.',
+      'Pesa ' + fmtSize(file.size) + ' y el navegador se queda sin memoria por encima de 120 MB. Divídelo o compártelo comprimido.',
+      file.name);
+    return;
+  }
+  pendingFile = file;
+  var fr = new FileReader();
+  fr.onerror = function () {
+    showError('No pude leer el archivo del disco.',
+      'El navegador no logró abrirlo. Puede que se haya movido o que el permiso de lectura falle. Vuelve a seleccionarlo.', file.name);
+  };
+  fr.onload = function () { pendingBytes = fr.result; loadPdf(fr.result, null); };
+  fr.readAsArrayBuffer(file);
+}
+
+function fmtSize(b) {
+  return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+}
+
+function loadPdf(bytes, password) {
+  var task = pdfjsLib.getDocument({
+    data: new Uint8Array(bytes.slice(0)),   // pdf.js se queda con el buffer: se le pasa una copia
+    password: password || undefined,
+    isEvalSupported: false,
+    useSystemFonts: true
+  });
+  task.promise.then(function (pdf) {
+    closeDialog($('pwScrim'));
+    return startDocument(pdf, bytes, password);
+  }).catch(function (err) {
+    var name = err && err.name;
+    if (name === 'PasswordException') {
+      var wrong = err.code === 2 || /incorrect/i.test(err.message || '');
+      $('pwErr').hidden = !wrong;
+      if ($('pwScrim').hidden) openDialog($('pwScrim'), $('pwInput'));
+      $('pwInput').select();
+      return;
+    }
+    if (name === 'InvalidPDFException') {
+      showError('El archivo está dañado o no es un PDF de verdad.',
+        'Los primeros bytes no corresponden a un PDF válido. Si te llegó por correo o chat, pide que te lo reenvíen: a veces se corta en el camino.',
+        (err.message || '') + '');
+      return;
+    }
+    showError('No pude abrir este PDF.',
+      'El navegador falló al procesarlo. Intenta abrirlo en otro visor y volver a guardarlo como PDF; eso suele arreglar archivos generados por escáneres viejos.',
+      (name || 'Error') + ': ' + (err && err.message || err));
+  });
+}
+
+$('pwOk').onclick = function () {
+  var v = $('pwInput').value;
+  if (!v) { $('pwInput').focus(); return; }
+  loadPdf(pendingBytes, v);
+};
+$('pwInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('pwOk').click(); });
+$('pwCancel').onclick = cancelPassword;
+function cancelPassword() {
+  closeDialog($('pwScrim'));
+  $('pwInput').value = '';
+  $('pwErr').hidden = true;
+  pendingBytes = null;
+  toast('Cancelado. El PDF no se abrió.');
+}
+
+function startDocument(pdf, bytes, password) {
+  S.pdf = pdf; S.bytes = bytes; S.name = pendingFile ? pendingFile.name : 'documento.pdf';
+  S.els = []; S.sel = null; S.page = 1; S.dirty = false; S.form = null; S.encrypted = false;
+  undoStack.length = 0; redoStack.length = 0;
+  $('deck').innerHTML = '';
+  /* nada del documento anterior se queda en pantalla */
+  $('banner').hidden = true;
+  $('fieldsList').innerHTML = '';
+  $('tabForm').hidden = true;
+  checkWidgetOverlap.warned = false;
+  showTab('props');
+
+  /* pdf-lib lee el mismo archivo: de ahí salen CropBox, /Rotate y el AcroForm */
+  return PDFLib.PDFDocument.load(bytes, { updateMetadata: false }).catch(function (e) {
+    if (e && /encrypt/i.test(e.message || '')) {
+      S.encrypted = true;
+      return PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+    }
+    throw e;
+  }).then(function (libDoc) {
+    S.libDoc = libDoc;
+    var libPages = libDoc.getPages();
+    if (libPages.length !== pdf.numPages) console.warn('Tinta: conteo de páginas distinto entre pdf.js y pdf-lib');
+
+    var jobs = [];
+    for (var i = 1; i <= pdf.numPages; i++) jobs.push(pdf.getPage(i));
+    return Promise.all(jobs).then(function (jsPages) {
+      S.pages = jsPages.map(function (jsPage, i) {
+        var vp = jsPage.getViewport({ scale: 1 });
+        var g = buildPageGeom(libPages[i], vp);
+        g.num = i + 1; g.jsPage = jsPage; g.rendered = 0;
+        return g;
+      });
+      /* buildDeck primero: detectForm dibuja las sombras de los campos y para
+         eso necesita la capa de cada página ya creada. */
+      buildDeck();
+      detectForm(libDoc);
+      afterOpen(password);
+    });
+  }).catch(function (e) {
+    showError('Abrí el PDF pero no puedo escribir sobre él.',
+      'pdf-lib no logró interpretar su estructura interna. Ábrelo en otro programa, guárdalo de nuevo como PDF y vuelve a traerlo.',
+      (e && e.message) || String(e));
+  });
+}
+
+function afterOpen(password) {
+  $('welcome').hidden = true;
+  $('side').hidden = false;
+  $('zoombar').hidden = false;
+  $('docInfo').hidden = false;
+  $('fname').textContent = S.name;
+  $('fmeta').textContent = S.pdf.numPages + (S.pdf.numPages === 1 ? ' página' : ' páginas');
+  $('pgLbl').textContent = '1 / ' + S.pages.length;
+  document.querySelectorAll('.tool[data-tool]').forEach(function (b) { b.disabled = false; });
+  $('save').disabled = false;
+  syncHistory();
+  fitWidth();
+  setTool('select');
+  refreshProps();
+  renderDatos();
+
+  if (S.encrypted || password) {
+    showBanner('Este PDF está protegido con contraseña. Puedo mostrarlo y dejarte escribir encima, pero no puedo guardar un PDF de texto sobre un archivo cifrado: al descargar te entrego una copia rasterizada, que se ve igual pero no lleva texto seleccionable.');
+  }
+  restoreWork();
+}
+
+/* =====================================================================
+   7 · Render de páginas
+   ===================================================================== */
+
+var DPR_CAP = 2;
+var deck = $('deck');
+
+function buildDeck() {
+  deck.innerHTML = '';
+  S.pages.forEach(function (g) {
+    var el = document.createElement('div');
+    el.className = 'page busy';
+    el.dataset.page = g.num;
+    el.innerHTML = '<canvas></canvas><div class="layer"></div><div class="guides"></div>' +
+                   '<span class="pnum">' + g.num + ' / ' + S.pages.length + '</span>';
+    g.node = el;
+    g.canvas = el.querySelector('canvas');
+    g.layer = el.querySelector('.layer');
+    g.guides = el.querySelector('.guides');
+    deck.appendChild(el);
+  });
+  sizePages();
+  observePages();
+}
+
+function sizePages() {
+  S.pages.forEach(function (g) {
+    g.node.style.width = (g.W * S.zoom) + 'px';
+    g.node.style.height = (g.H * S.zoom) + 'px';
+  });
+  S.els.forEach(paintEl);
+  paintWidgets();
+}
+
+var io = null;
+function observePages() {
+  if (io) io.disconnect();
+  io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      var g = S.pages[+en.target.dataset.page - 1];
+      renderPage(g);
+    });
+  }, { root: deck, rootMargin: '900px 0px' });
+  S.pages.forEach(function (g) { io.observe(g.node); });
+}
+
+function renderPage(g) {
+  var want = S.zoom;
+  if (g.rendering) { g.pending = want; return; }
+  if (g.rendered === want) return;
+  g.rendering = true;
+  var dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+  var scale = want * dpr;
+  var vp = g.jsPage.getViewport({ scale: scale });
+  g.canvas.width = Math.max(1, Math.round(vp.width));
+  g.canvas.height = Math.max(1, Math.round(vp.height));
+  var ctx = g.canvas.getContext('2d', { alpha: false });
+  if (g.task) { try { g.task.cancel(); } catch (e) {} }
+  g.task = g.jsPage.render({ canvasContext: ctx, viewport: vp, background: '#FFFFFF' });
+  g.task.promise.then(function () {
+    g.rendered = want; g.rendering = false; g.task = null;
+    g.node.classList.remove('busy');
+    g.inkProfile = null;                      // el perfil de tinta se recalcula al vuelo
+    if (g.pending && g.pending !== want) { var p = g.pending; g.pending = null; S.zoom === p && renderPage(g); }
+  }).catch(function (e) {
+    g.rendering = false; g.task = null;
+    if (e && e.name === 'RenderingCancelledException') return;
+    g.node.classList.remove('busy');
+    console.warn('Tinta: falló el render de la página ' + g.num, e);
+  });
+}
+
+function rerenderAll() {
+  S.pages.forEach(function (g) {
+    if (g.node.getBoundingClientRect().bottom > -1200 && g.node.getBoundingClientRect().top < window.innerHeight + 1200) renderPage(g);
+    else g.rendered = 0;
+  });
+}
+
+/* =====================================================================
+   8 · Elementos sobre la página
+   ===================================================================== */
+
+function nodeOf(id) { return id ? deck.querySelector('.el[data-id="' + id + '"]') : null; }
+function elById(id) { return S.els.find(function (e) { return e.id === id; }) || null; }
+
+function mountEl(el) {
+  var g = S.pages[el.page - 1];
+  var node = document.createElement('div');
+  node.className = 'el ' + el.type;
+  node.dataset.id = el.id;
+  node.tabIndex = 0;
+  node.setAttribute('role', 'group');
+  var body = document.createElement('div');
+  body.className = 'body';
+  if (el.type === 'image') {
+    var img = document.createElement('img');
+    img.alt = typeName(el);
+    img.src = el.src;
+    img.draggable = false;
+    body.appendChild(img);
+  }
+  node.appendChild(body);
+  ['nw', 'ne', 'sw', 'se', 'rot'].forEach(function (k) {
+    var h = document.createElement('span');
+    h.className = 'h h-' + k;
+    h.dataset.handle = k;
+    node.appendChild(h);
+  });
+  g.layer.appendChild(node);
+  paintEl(el);
+  wireEl(node, el);
+}
+
+function unmountEl(id) { var n = nodeOf(id); if (n) n.remove(); }
+
+function paintEl(el) {
+  var node = nodeOf(el.id);
+  if (!node) return;
+  var z = S.zoom;
+  node.style.left = (el.x * z) + 'px';
+  node.style.top = (el.y * z) + 'px';
+  node.style.transform = el.rot ? 'rotate(' + el.rot + 'deg)' : '';
+  if (el.type === 'text') {
+    var m = fontMetrics(el.family, el.bold);
+    var px = el.size * z;
+    var body = node.querySelector('.body');
+    body.style.font = (el.bold ? '700 ' : '400 ') + px + 'px/' + ((m.asc + m.desc) * px) + 'px ' + FAMILIES[el.family].css;
+    body.style.color = el.color;
+    if (body.textContent !== el.text && document.activeElement !== body) body.textContent = el.text;
+    node.setAttribute('aria-label', 'Texto: ' + (el.text || 'vacío'));
+    /* la caja la mide el navegador; se guarda para enganches y avisos */
+    el.w = node.offsetWidth / z;
+    el.h = node.offsetHeight / z;
+  } else {
+    node.style.width = (el.w * z) + 'px';
+    node.style.height = (el.h * z) + 'px';
+    node.setAttribute('aria-label', typeName(el));
+  }
+  checkWidgetOverlap(el, node);
+}
+
+function scrollElIntoView(node) {
+  var r = node.getBoundingClientRect(), d = deck.getBoundingClientRect();
+  if (r.top < d.top + 20 || r.bottom > d.bottom - 20) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function select(id, opts) {
+  opts = opts || {};
+  if (S.sel && S.sel !== id) {
+    var prev = nodeOf(S.sel);
+    if (prev) { prev.classList.remove('sel'); stopEditing(prev); }
+  }
+  S.sel = id;
+  var node = nodeOf(id);
+  if (node) node.classList.add('sel');
+  refreshProps();
+  if (!opts.silent && window.matchMedia('(max-width:720px)').matches && id) openSheet(true);
+}
+
+/* Un elemento nuevo hereda el último formato usado y cae donde el usuario tocó */
+function makeText(pageNum, x, y, text) {
+  var el = {
+    id: uid(), type: 'text', page: pageNum, x: x, y: y, rot: 0,
+    size: prefs.size, color: prefs.color, family: prefs.family, bold: prefs.bold,
+    text: text || ''
+  };
+  return el;
+}
+function makeImage(pageNum, x, y, src, natW, natH, kind, widthPt) {
+  var w = widthPt || Math.min(150, natW * 0.75);
+  return {
+    id: uid(), type: 'image', page: pageNum, kind: kind || 'image',
+    x: x, y: y, w: w, h: w * natH / natW, rot: 0,
+    src: src, natW: natW, natH: natH
+  };
+}
+
+/* =====================================================================
+   9 · Interacción: crear, mover, redimensionar, girar
+   ===================================================================== */
+
+var TOOLS = ['select', 'text', 'sign', 'print', 'image'];
+function setTool(t) {
+  S.tool = t;
+  document.querySelectorAll('.tool[data-tool]').forEach(function (b) {
+    b.setAttribute('aria-pressed', b.dataset.tool === t ? 'true' : 'false');
+  });
+  deck.style.cursor = t === 'select' ? '' : 'crosshair';
+  refreshProps();
+}
+document.querySelectorAll('.tool[data-tool]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var t = b.dataset.tool;
+    /* La firma se puede dibujar o fotografiar, así que abre su diálogo.
+       La huella digital nunca se dibuja: va derecho a elegir la imagen. */
+    if (t === 'sign')  { openSignDialog(); return; }
+    if (t === 'print') { pickImage('print'); return; }
+    if (t === 'image') { pickImage('image'); return; }
+    setTool(t);
+  });
+});
+
+/* --- clic sobre una página vacía --- */
+deck.addEventListener('pointerdown', function (e) {
+  var pageNode = e.target.closest ? e.target.closest('.page') : null;
+  if (!pageNode) return;
+  if (e.target.closest('.el')) return;                 // lo maneja el elemento
+  if (S.tool === 'select') { select(null); return; }
+  var g = S.pages[+pageNode.dataset.page - 1];
+  var r = pageNode.getBoundingClientRect();
+  var x = (e.clientX - r.left) / S.zoom, y = (e.clientY - r.top) / S.zoom;
+  if (S.tool === 'text') {
+    var m = fontMetrics(prefs.family, prefs.bold);
+    /* el clic marca la línea base, que es como uno mira un renglón */
+    var el = makeText(g.num, x, y - m.asc * prefs.size, '');
+    runCmd(cmdAdd(el));
+    setTool('select');
+    var node = nodeOf(el.id);
+    startEditing(node, el, true);
+  }
+});
+
+/* --- arrastre de elementos y manijas --- */
+function wireEl(node, el) {
+  node.addEventListener('pointerdown', function (e) {
+    if (node.classList.contains('editing')) return;         // escribiendo: deja pasar el cursor
+    var handle = e.target.dataset ? e.target.dataset.handle : null;
+    e.preventDefault();
+    e.stopPropagation();
+    select(el.id);
+    node.focus({ preventScroll: true });
+    if (handle === 'rot') startRotate(e, node, el);
+    else if (handle) startResize(e, node, el, handle);
+    else startMove(e, node, el);
+  });
+  node.addEventListener('dblclick', function (e) {
+    if (el.type !== 'text') return;
+    e.preventDefault();
+    startEditing(node, el);
+  });
+  node.addEventListener('keydown', function (e) {
+    if (node.classList.contains('editing')) return;
+    var step = e.shiftKey ? 10 : 1;
+    var d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (d) {
+      e.preventDefault();
+      nudge(el, d[0], d[1]);
+      return;
+    }
+    if (e.key === 'Enter' && el.type === 'text') { e.preventDefault(); startEditing(node, el); }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); runCmd(cmdRemove(el)); }
+  });
+}
+
+/* El desplazamiento con flechas también se agrupa: mantener la tecla no
+   llena la pila de 40 comandos. */
+var nudgeBurst = null;
+function nudge(el, dx, dy) {
+  if (!nudgeBurst || nudgeBurst.el !== el) {
+    closeNudge();
+    nudgeBurst = { el: el, before: { x: el.x, y: el.y }, cmd: null };
+  }
+  el.x += dx; el.y += dy;
+  paintEl(el); refreshProps();
+  if (!nudgeBurst.cmd) {
+    nudgeBurst.cmd = cmdPatch(el, nudgeBurst.before, { x: el.x, y: el.y }, 'mover ' + typeName(el));
+    undoStack.push(nudgeBurst.cmd);
+    redoStack.length = 0;
+    syncHistory();
+  } else {
+    nudgeBurst.cmd.after = { x: el.x, y: el.y };
+  }
+  clearTimeout(nudgeBurst.timer);
+  nudgeBurst.timer = setTimeout(closeNudge, 700);
+  S.dirty = true;
+}
+function closeNudge() {
+  if (!nudgeBurst) return;
+  clearTimeout(nudgeBurst.timer);
+  var b = nudgeBurst; nudgeBurst = null;
+  if (b.cmd && b.cmd.before.x === b.cmd.after.x && b.cmd.before.y === b.cmd.after.y) {
+    var i = undoStack.indexOf(b.cmd);
+    if (i >= 0) undoStack.splice(i, 1);
+    syncHistory();
+  } else saveWork();
+}
+
+/* Un arrastre entero es UN comando: se toma el antes al empezar y el después
+   al soltar. Los pointermove solo mueven el modelo, no tocan la pila. */
+function startMove(e, node, el) {
+  closeTypingBurst(); closeNudge();
+  var g = S.pages[el.page - 1];
+  var before = { x: el.x, y: el.y };
+  var r = g.node.getBoundingClientRect();
+  var offX = (e.clientX - r.left) / S.zoom - el.x;
+  var offY = (e.clientY - r.top) / S.zoom - el.y;
+  var moved = false;
+  var band = null;
+  try { node.setPointerCapture(e.pointerId); } catch (err) {}
+
+  function move(ev) {
+    var nx = (ev.clientX - r.left) / S.zoom - offX;
+    var ny = (ev.clientY - r.top) / S.zoom - offY;
+    if (!moved && Math.abs(nx - before.x) < .4 && Math.abs(ny - before.y) < .4) return;
+    moved = true;
+    if (!ev.altKey) {
+      band = snap(el, g, nx, ny, band);
+      nx = band.x; ny = band.y;
+    } else clearGuides(g);
+    el.x = clamp(nx, -el.w, g.W); el.y = clamp(ny, -el.h, g.H);
+    paintEl(el);
+  }
+  function up() {
+    node.removeEventListener('pointermove', move);
+    node.removeEventListener('pointerup', up);
+    node.removeEventListener('pointercancel', up);
+    clearGuides(g);
+    if (!moved) return;
+    var after = { x: el.x, y: el.y };
+    Object.assign(el, before);
+    runCmd(cmdPatch(el, before, after, 'mover ' + typeName(el)));
+  }
+  node.addEventListener('pointermove', move);
+  node.addEventListener('pointerup', up);
+  node.addEventListener('pointercancel', up);
+}
+
+function startResize(e, node, el, corner) {
+  closeTypingBurst(); closeNudge();
+  var g = S.pages[el.page - 1];
+  var before = el.type === 'text' ? { size: el.size } : { x: el.x, y: el.y, w: el.w, h: el.h };
+  var r = g.node.getBoundingClientRect();
+  var sx = (e.clientX - r.left) / S.zoom, sy = (e.clientY - r.top) / S.zoom;
+  var start = { size: el.size, x: el.x, y: el.y, w: el.w, h: el.h };
+  var moved = false;
+  try { node.setPointerCapture(e.pointerId); } catch (err) {}
+
+  /* con rotación, el desplazamiento del puntero se lleva al eje del elemento */
+  function local(dx, dy) {
+    if (!el.rot) return [dx, dy];
+    var rad = -el.rot * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad);
+    return [dx * c - dy * s, dx * s + dy * c];
+  }
+
+  function move(ev) {
+    var d = local((ev.clientX - r.left) / S.zoom - sx, (ev.clientY - r.top) / S.zoom - sy);
+    var dx = d[0], dy = d[1];
+    if (!moved && Math.abs(dx) < .5 && Math.abs(dy) < .5) return;
+    moved = true;
+    if (el.type === 'text') {
+      /* redimensionar un texto es cambiarle el cuerpo, no estirarlo */
+      var sign = (corner === 'se' || corner === 'ne') ? 1 : -1;
+      var vs = (corner === 'nw' || corner === 'ne') ? -1 : 1;
+      var delta = (dx * sign + dy * vs) / 2;
+      el.size = clamp(Math.round((start.size + delta * 0.6) * 2) / 2, 4, 160);
+    } else {
+      var ar = start.w / start.h;
+      var w = start.w, h = start.h, x = start.x, y = start.y;
+      if (corner === 'se') { w = start.w + dx; }
+      else if (corner === 'sw') { w = start.w - dx; x = start.x + dx; }
+      else if (corner === 'ne') { w = start.w + dx; }
+      else { w = start.w - dx; x = start.x + dx; }
+      w = Math.max(8, w); h = w / ar;
+      if (corner === 'ne' || corner === 'nw') y = start.y + start.h - h;
+      if (corner === 'sw' || corner === 'nw') x = start.x + start.w - w;
+      el.x = x; el.y = y; el.w = w; el.h = h;
+    }
+    paintEl(el); refreshProps();
+  }
+  function up() {
+    node.removeEventListener('pointermove', move);
+    node.removeEventListener('pointerup', up);
+    node.removeEventListener('pointercancel', up);
+    if (!moved) return;
+    var after = el.type === 'text' ? { size: el.size } : { x: el.x, y: el.y, w: el.w, h: el.h };
+    Object.assign(el, before);
+    runCmd(cmdPatch(el, before, after, 'redimensionar ' + typeName(el)));
+    if (el.type === 'text') { prefs.size = el.size; savePrefs(); }
+  }
+  node.addEventListener('pointermove', move);
+  node.addEventListener('pointerup', up);
+  node.addEventListener('pointercancel', up);
+}
+
+function startRotate(e, node, el) {
+  closeTypingBurst(); closeNudge();
+  var g = S.pages[el.page - 1];
+  var before = { rot: el.rot };
+  var r = node.getBoundingClientRect();
+  var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  var a0 = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+  var start = el.rot, moved = false;
+  try { node.setPointerCapture(e.pointerId); } catch (err) {}
+  function move(ev) {
+    var a = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+    var v = start + (a - a0);
+    if (!ev.altKey) v = Math.round(v / 0.5) * 0.5;
+    if (ev.shiftKey) v = Math.round(v / 15) * 15;
+    v = ((v + 180) % 360 + 360) % 360 - 180;
+    if (Math.abs(v - el.rot) < .01) return;
+    moved = true; el.rot = v; paintEl(el); refreshProps();
+  }
+  function up() {
+    node.removeEventListener('pointermove', move);
+    node.removeEventListener('pointerup', up);
+    node.removeEventListener('pointercancel', up);
+    if (!moved) return;
+    var after = { rot: el.rot };
+    Object.assign(el, before);
+    runCmd(cmdPatch(el, before, after, 'girar ' + typeName(el)));
+  }
+  node.addEventListener('pointermove', move);
+  node.addEventListener('pointerup', up);
+  node.addEventListener('pointercancel', up);
+}
+
+/* --- edición del texto en línea --- */
+var PLAINTEXT_OK = (function () {
+  var d = document.createElement('div');
+  try { d.contentEditable = 'plaintext-only'; return d.contentEditable === 'plaintext-only'; } catch (e) { return false; }
+})();
+
+function startEditing(node, el, atEnd) {
+  if (!node || el.type !== 'text') return;
+  var body = node.querySelector('.body');
+  node.classList.add('editing');
+  body.contentEditable = PLAINTEXT_OK ? 'plaintext-only' : 'true';
+  body.spellcheck = false;
+  body.focus();
+  if (atEnd || !el.text) placeCaretEnd(body);
+  else document.execCommand && document.execCommand('selectAll', false, null);
+  /* En móvil el foco dentro de un manejador de puntero a veces no prende a la
+     primera; se reintenta en el siguiente cuadro. */
+  requestAnimationFrame(function () {
+    if (node.classList.contains('editing') && document.activeElement !== body) {
+      body.focus();
+      if (atEnd || !el.text) placeCaretEnd(body);
+    }
+  });
+
+  body.oninput = function () {
+    var txt = readText(body);
+    if (!burst || burst.el !== el) typingBurst(el, el.text);
+    el.text = txt;
+    updateBurst(txt);
+    el.w = node.offsetWidth / S.zoom;
+    warnUnsupported(txt);
+    refreshProps();
+  };
+  body.onblur = function () { stopEditing(node); };
+  body.onkeydown = function (ev) {
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); body.blur(); node.focus(); }
+    if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); body.blur(); node.focus(); }
+    if ((ev.metaKey || ev.ctrlKey) && (ev.key === 'z' || ev.key === 'Z' || ev.key === 'y')) {
+      /* deshacer siempre lo lleva la app, nunca el contenteditable */
+      ev.preventDefault();
+      body.blur();
+      (ev.shiftKey || ev.key === 'y') ? redo() : undo();
+    }
+  };
+  body.onpaste = function (ev) {
+    ev.preventDefault();
+    var t = (ev.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, t.replace(/\r/g, ''));
+  };
+}
+
+function stopEditing(node) {
+  if (!node || !node.classList.contains('editing')) return;
+  var body = node.querySelector('.body');
+  node.classList.remove('editing');
+  body.contentEditable = 'false';
+  body.oninput = body.onblur = body.onkeydown = body.onpaste = null;
+  var el = elById(node.dataset.id);
+  if (el) {
+    el.text = readText(body);
+    body.textContent = el.text;
+    paintEl(el);
+    /* Un texto recién creado que se abandona sin escribir nada se cancela sin
+       dejar rastro: es el clic por equivocación, no una acción del usuario.
+       Si en cambio tenía texto y lo borró, se respeta: el comando de tecleo ya
+       está en la pila y deshacer se lo devuelve. */
+    if (!el.text.trim()) {
+      closeTypingBurst();
+      var top = undoStack[undoStack.length - 1];
+      if (top && top.selAfter === el.id && top.label.indexOf('poner') === 0) {
+        undoStack.pop();
+        unmountEl(el.id);
+        S.els = S.els.filter(function (x) { return x.id !== el.id; });
+        select(null);
+        syncHistory();
+        return;
+      }
+    }
+  }
+  closeTypingBurst();
+  refreshProps();
+}
+
+function readText(body) {
+  return (body.innerText || '').replace(/ /g, ' ').replace(/\n$/, '');
+}
+function placeCaretEnd(node) {
+  var r = document.createRange(), s = window.getSelection();
+  r.selectNodeContents(node); r.collapse(false);
+  s.removeAllRanges(); s.addRange(r);
+}
+
+var warnTimer;
+function warnUnsupported(txt) {
+  clearTimeout(warnTimer);
+  warnTimer = setTimeout(function () {
+    var bad = unsupportedChars(txt);
+    if (bad.length) toast('Las fuentes estándar del PDF no incluyen ' + bad.slice(0, 3).join(' ') + '. Esos caracteres se van a omitir al descargar.');
+  }, 900);
+}
+
+/* =====================================================================
+   10 · Enganche a renglones y alineación
+   ---------------------------------------------------------------------
+   Al arrastrar se lee una banda de píxeles alrededor del elemento y se
+   buscan filas con mucha tinta: son las rayas y los puntos suspensivos del
+   formulario. La línea base del texto se pega dos puntos por encima.
+   ===================================================================== */
+
+var SNAP = 4;   // tolerancia en puntos de vista
+
+function snap(el, g, nx, ny, band) {
+  var out = { x: nx, y: ny };
+  var gx = null, gy = null, tag = null;
+  var m = el.type === 'text' ? fontMetrics(el.family, el.bold) : null;
+  var baseOff = m ? m.asc * el.size : el.h;     // del borde superior a la línea base
+
+  /* 1 · alineación con otros elementos de la misma página */
+  var others = S.els.filter(function (o) { return o.page === el.page && o.id !== el.id; });
+  for (var i = 0; i < others.length; i++) {
+    var o = others[i];
+    var om = o.type === 'text' ? fontMetrics(o.family, o.bold) : null;
+    var ob = o.y + (om ? om.asc * o.size : o.h);
+    if (Math.abs((ny + baseOff) - ob) < SNAP) { out.y = ob - baseOff; gy = ob; tag = 'misma línea'; }
+    if (Math.abs(nx - o.x) < SNAP) { out.x = o.x; gx = o.x; }
+  }
+
+  /* 2 · renglones del formulario */
+  if (gy === null) {
+    var bx = nx, by = ny + baseOff;
+    if (!band || Math.abs(bx - band.bx) > 18 || Math.abs(by - band.by) > 30) band = readBand(g, bx, by, Math.max(40, el.w || 60));
+    if (band && band.rows.length) {
+      var best = null, bd = SNAP + 1;
+      band.rows.forEach(function (rowY) {
+        var d = Math.abs(by - (rowY - 1.5));
+        if (d < bd) { bd = d; best = rowY; }
+      });
+      if (best !== null) { out.y = best - 1.5 - baseOff; gy = best; tag = 'renglón'; }
+    }
+  } else band = null;
+
+  drawGuides(g, gx, gy, tag);
+  var res = band || {};
+  res.x = out.x; res.y = out.y;
+  return res;
+}
+
+/* Lee una banda del canvas y devuelve las filas con mucha tinta */
+function readBand(g, x, y, w) {
+  if (!g.canvas.width) return null;
+  var sx = g.canvas.width / (g.W * S.zoom);      // px de canvas por px de pantalla
+  var z = S.zoom;
+  var x0 = Math.max(0, Math.round((x * z) * sx));
+  var x1 = Math.min(g.canvas.width, Math.round(((x + w) * z) * sx));
+  var y0 = Math.max(0, Math.round(((y - 26) * z) * sx));
+  var y1 = Math.min(g.canvas.height, Math.round(((y + 26) * z) * sx));
+  if (x1 - x0 < 4 || y1 - y0 < 4) return null;
+  var data;
+  try { data = g.canvas.getContext('2d').getImageData(x0, y0, x1 - x0, y1 - y0); }
+  catch (e) { return null; }
+  var W = x1 - x0, H = y1 - y0, d = data.data, rows = [];
+  for (var r = 0; r < H; r++) {
+    var dark = 0, base = r * W * 4;
+    for (var c = 0; c < W; c++) {
+      var i = base + c * 4;
+      if ((d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) < 145) dark++;
+    }
+    /* una raya continua o punteada ocupa buena parte del ancho leído */
+    if (dark > W * 0.34) rows.push((y0 + r) / sx / z);
+  }
+  /* filas contiguas cuentan como un solo renglón: se toma la de más abajo */
+  var merged = [];
+  rows.forEach(function (v) {
+    if (merged.length && v - merged[merged.length - 1] < 2) merged[merged.length - 1] = v;
+    else merged.push(v);
+  });
+  return { bx: x, by: y, rows: merged };
+}
+
+function drawGuides(g, gx, gy, tag) {
+  clearGuides(g);
+  if (gy !== null && gy !== undefined) {
+    var h = document.createElement('div');
+    h.className = 'guide h';
+    h.style.top = (gy * S.zoom) + 'px';
+    g.guides.appendChild(h);
+    if (tag) {
+      var t = document.createElement('div');
+      t.className = 'guide-tag';
+      t.textContent = tag;
+      t.style.top = (gy * S.zoom) + 'px';
+      t.style.right = '4px';
+      g.guides.appendChild(t);
+    }
+  }
+  if (gx !== null && gx !== undefined) {
+    var v = document.createElement('div');
+    v.className = 'guide v';
+    v.style.left = (gx * S.zoom) + 'px';
+    g.guides.appendChild(v);
+  }
+}
+function clearGuides(g) { if (g && g.guides) g.guides.innerHTML = ''; }
+
+/* =====================================================================
+   11 · Panel de propiedades
+   ===================================================================== */
+
+function refreshProps() {
+  var el = elById(S.sel);
+  var body = $('propsBody'), empty = $('propsEmpty');
+  if (!el) {
+    body.hidden = true; empty.hidden = false;
+    empty.innerHTML = S.tool === 'text'
+      ? ic('text') + 'Toca la página donde quieres escribir. El punto donde toques es el renglón.'
+      : ic('cursor') + 'Selecciona algo sobre la página para ver sus propiedades, o elige una herramienta del riel.';
+    return;
+  }
+  empty.hidden = true; body.hidden = false;
+  body.innerHTML = el.type === 'text' ? textPropsHTML(el) : imagePropsHTML(el);
+  wireProps(el);
+}
+
+/* Título e ícono según lo que se seleccionó */
+function typeIcon(el) {
+  return el.type === 'text' ? 'text' : el.kind === 'sign' ? 'sign' : el.kind === 'print' ? 'finger' : 'image';
+}
+
+function textPropsHTML(el) {
+  return '' +
+  '<div class="grp"><h3>' + ic(typeIcon(el)) + 'Texto</h3>' +
+    '<textarea class="field" id="pText" rows="2" aria-label="Contenido del texto">' + esc(el.text) + '</textarea>' +
+  '</div>' +
+  '<div class="grp"><h3>Letra</h3>' +
+    '<div class="row"><label for="pFam">Fuente</label>' +
+      '<select class="field" id="pFam">' + Object.keys(FAMILIES).map(function (k) {
+        return '<option value="' + k + '"' + (el.family === k ? ' selected' : '') + '>' + FAMILIES[k].label + '</option>';
+      }).join('') + '</select>' +
+    '</div>' +
+    '<div class="row"><label for="pSize">Tamaño</label>' +
+      '<input type="range" id="pSize" min="4" max="48" step="0.5" value="' + el.size + '">' +
+      '<input class="field num" id="pSizeN" style="flex:0 0 58px" type="number" min="4" max="160" step="0.5" value="' + el.size + '" aria-label="Tamaño en puntos">' +
+    '</div>' +
+    '<div class="row"><label>Estilo</label>' +
+      '<div class="seg" role="group" aria-label="Estilo">' +
+        '<button type="button" id="pReg" aria-pressed="' + (!el.bold) + '">Normal</button>' +
+        '<button type="button" id="pBold" aria-pressed="' + (!!el.bold) + '"><b>Negrita</b></button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="row"><label>Color</label><div class="swatches" id="pColors">' +
+      COLORS.map(function (c) {
+        return '<button type="button" class="sw" data-hex="' + c.hex + '" title="' + c.name + '" aria-label="' + c.name + '"' +
+               ' aria-pressed="' + (el.color.toLowerCase() === c.hex.toLowerCase()) + '" style="background:' + c.hex + '"></button>';
+      }).join('') +
+      '<input type="color" class="sw" id="pColorAny" value="' + el.color + '" title="Otro color" aria-label="Elegir otro color">' +
+    '</div></div>' +
+  '</div>' +
+  posGroupHTML(el) +
+  '<div class="grp">' +
+    '<button class="btn danger" id="pDel" type="button" style="width:100%">' + ic('trash') + 'Eliminar</button>' +
+    '<p class="hint">Mueve con las flechas: <kbd>←↑↓→</kbd> un punto, con <kbd>⇧</kbd> diez. <kbd>Alt</kbd> mientras arrastras desactiva el enganche.</p>' +
+  '</div>';
+}
+
+function imagePropsHTML(el) {
+  return '' +
+  '<div class="grp"><h3>' + ic(typeIcon(el)) +
+    (el.kind === 'sign' ? 'Firma' : el.kind === 'print' ? 'Huella digital' : 'Imagen') + '</h3>' +
+    '<div class="row"><label for="pW">Ancho</label>' +
+      '<input type="range" id="pW" min="10" max="500" step="1" value="' + Math.round(el.w) + '">' +
+      '<input class="field num" id="pWN" style="flex:0 0 58px" type="number" min="4" step="1" value="' + Math.round(el.w) + '" aria-label="Ancho en puntos">' +
+    '</div>' +
+    '<p class="hint">La proporción se mantiene sola: ' + Math.round(el.w) + ' × ' + Math.round(el.h) + ' pt.</p>' +
+  '</div>' +
+  posGroupHTML(el) +
+  '<div class="grp">' +
+    '<button class="btn danger" id="pDel" type="button" style="width:100%">' + ic('trash') + 'Eliminar</button>' +
+  '</div>';
+}
+
+function posGroupHTML(el) {
+  return '<div class="grp"><h3>Posición</h3>' +
+    '<div class="row"><label for="pX">X</label><input class="field num" id="pX" type="number" step="0.5" value="' + el.x.toFixed(1) + '">' +
+      '<label for="pY" style="flex:0 0 16px;text-align:right">Y</label><input class="field num" id="pY" type="number" step="0.5" value="' + el.y.toFixed(1) + '"></div>' +
+    '<div class="row"><label for="pRot">Giro</label>' +
+      '<input type="range" id="pRot" min="-15" max="15" step="0.5" value="' + clamp(el.rot, -15, 15) + '">' +
+      '<input class="field num" id="pRotN" style="flex:0 0 58px" type="number" step="0.5" value="' + el.rot + '" aria-label="Giro en grados"></div>' +
+    '<p class="hint">Página ' + el.page + '. El giro sirve para cuadrar escaneos torcidos.</p>' +
+  '</div>';
+}
+
+/* Los deslizadores muestran el cambio al vuelo pero solo entran a la pila
+   al soltar: un arrastre del control es un solo comando. */
+function wireProps(el) {
+  var live = null;
+  function beginLive(keys) {
+    if (live) return;
+    live = {}; keys.forEach(function (k) { live[k] = el[k]; });
+  }
+  function commitLive(label) {
+    if (!live) return;
+    var before = live, after = {};
+    Object.keys(before).forEach(function (k) { after[k] = el[k]; });
+    live = null;
+    var changed = Object.keys(before).some(function (k) { return before[k] !== after[k]; });
+    if (!changed) return;
+    Object.assign(el, before);
+    runCmd(cmdPatch(el, before, after, label));
+  }
+
+  var pText = $('pText');
+  if (pText) {
+    pText.oninput = function () {
+      if (!burst || burst.el !== el) typingBurst(el, el.text);
+      el.text = pText.value;
+      updateBurst(el.text);
+      paintEl(el);
+      warnUnsupported(el.text);
+    };
+    pText.onblur = closeTypingBurst;
+  }
+
+  var pFam = $('pFam');
+  if (pFam) pFam.onchange = function () {
+    var before = { family: el.family }, after = { family: pFam.value };
+    runCmd(cmdPatch(el, before, after, 'cambiar fuente'));
+    prefs.family = pFam.value; savePrefs();
+  };
+
+  var pSize = $('pSize'), pSizeN = $('pSizeN');
+  if (pSize) {
+    pSize.oninput = function () { beginLive(['size']); el.size = +pSize.value; if (pSizeN) pSizeN.value = el.size; paintEl(el); };
+    pSize.onchange = function () { commitLive('cambiar tamaño'); prefs.size = el.size; savePrefs(); };
+    pSizeN.onchange = function () {
+      var v = clamp(+pSizeN.value || el.size, 4, 160);
+      runCmd(cmdPatch(el, { size: el.size }, { size: v }, 'cambiar tamaño'));
+      prefs.size = v; savePrefs();
+    };
+  }
+
+  var pW = $('pW'), pWN = $('pWN');
+  if (pW) {
+    pW.oninput = function () {
+      beginLive(['w', 'h']);
+      var ar = el.w / el.h; el.w = +pW.value; el.h = el.w / ar;
+      if (pWN) pWN.value = Math.round(el.w);
+      paintEl(el);
+    };
+    pW.onchange = function () { commitLive('redimensionar ' + typeName(el)); };
+    pWN.onchange = function () {
+      var ar = el.w / el.h, w = Math.max(4, +pWN.value || el.w);
+      runCmd(cmdPatch(el, { w: el.w, h: el.h }, { w: w, h: w / ar }, 'redimensionar ' + typeName(el)));
+    };
+  }
+
+  var pReg = $('pReg'), pBold = $('pBold');
+  if (pReg) {
+    pReg.onclick = function () { if (!el.bold) return; runCmd(cmdPatch(el, { bold: true }, { bold: false }, 'quitar negrita')); prefs.bold = false; savePrefs(); };
+    pBold.onclick = function () { if (el.bold) return; runCmd(cmdPatch(el, { bold: false }, { bold: true }, 'poner negrita')); prefs.bold = true; savePrefs(); };
+  }
+
+  var pColors = $('pColors');
+  if (pColors) {
+    pColors.querySelectorAll('.sw[data-hex]').forEach(function (b) {
+      b.onclick = function () {
+        if (el.color.toLowerCase() === b.dataset.hex.toLowerCase()) return;
+        runCmd(cmdPatch(el, { color: el.color }, { color: b.dataset.hex }, 'cambiar color'));
+        prefs.color = b.dataset.hex; savePrefs();
+      };
+    });
+    var any = $('pColorAny');
+    any.oninput = function () { beginLive(['color']); el.color = any.value; paintEl(el); };
+    any.onchange = function () { commitLive('cambiar color'); prefs.color = el.color; savePrefs(); };
+  }
+
+  var pX = $('pX'), pY = $('pY');
+  if (pX) {
+    pX.onchange = function () { runCmd(cmdPatch(el, { x: el.x }, { x: +pX.value }, 'mover ' + typeName(el))); };
+    pY.onchange = function () { runCmd(cmdPatch(el, { y: el.y }, { y: +pY.value }, 'mover ' + typeName(el))); };
+  }
+  var pRot = $('pRot'), pRotN = $('pRotN');
+  if (pRot) {
+    pRot.oninput = function () { beginLive(['rot']); el.rot = +pRot.value; if (pRotN) pRotN.value = el.rot; paintEl(el); };
+    pRot.onchange = function () { commitLive('girar ' + typeName(el)); };
+    pRotN.onchange = function () { runCmd(cmdPatch(el, { rot: el.rot }, { rot: +pRotN.value || 0 }, 'girar ' + typeName(el))); };
+  }
+
+  var pDel = $('pDel');
+  if (pDel) pDel.onclick = function () { runCmd(cmdRemove(el)); };
+}
+
+/* =====================================================================
+   12 · Firma a mano alzada
+   ===================================================================== */
+
+var pad = $('pad'), padCtx = pad.getContext('2d'), padStrokes = [];
+
+function openSignDialog() {
+  padStrokes = [];
+  clearPad();
+  $('padOk').disabled = true;
+  $('padPh').hidden = false;
+  signMode('draw');
+  openDialog($('signScrim'), pad);
+}
+
+/* 'draw' dibuja en el canvas; 'up' sube una foto de la firma en papel */
+function signMode(mode) {
+  var draw = mode === 'draw';
+  $('signModeDraw').setAttribute('aria-pressed', draw ? 'true' : 'false');
+  $('signModeUp').setAttribute('aria-pressed', draw ? 'false' : 'true');
+  $('signDraw').hidden = !draw;
+  $('signUp').hidden = draw;
+  $('padClear').hidden = !draw;
+  $('padOk').hidden = !draw;
+}
+$('signModeDraw').onclick = function () { signMode('draw'); };
+$('signModeUp').onclick = function () { signMode('up'); };
+$('signPick').onclick = function () { closeDialog($('signScrim')); pickImage('sign'); };
+
+$('padCancel').onclick = function () { closeDialog($('signScrim')); };
+$('padClear').onclick = function () { padStrokes = []; clearPad(); $('padOk').disabled = true; $('padPh').hidden = false; };
+$('padW').oninput = function () { $('padWv').textContent = $('padW').value; redrawPad(); };
+
+function clearPad() { padCtx.clearRect(0, 0, pad.width, pad.height); }
+
+/* Trazo suavizado con curvas y grosor según la velocidad: con el mouse
+   queda mucho menos rígido que una polilínea. */
+function redrawPad() {
+  clearPad();
+  padCtx.lineCap = 'round';
+  padCtx.lineJoin = 'round';
+  padCtx.strokeStyle = '#0B1730';
+  var base = +$('padW').value * 2;
+  padStrokes.forEach(function (st) {
+    for (var i = 1; i < st.length; i++) {
+      var a = st[i - 1], b = st[i];
+      var d = Math.hypot(b.x - a.x, b.y - a.y);
+      var w = clamp(base * (1.35 - Math.min(d / 26, 0.85)), base * 0.42, base * 1.35);
+      padCtx.lineWidth = w;
+      padCtx.beginPath();
+      if (i === 1) padCtx.moveTo(a.x, a.y);
+      else {
+        var p = st[i - 2];
+        padCtx.moveTo((p.x + a.x) / 2, (p.y + a.y) / 2);
+        padCtx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        padCtx.stroke();
+        continue;
+      }
+      padCtx.lineTo(b.x, b.y);
+      padCtx.stroke();
+    }
+    if (st.length === 1) {
+      padCtx.beginPath();
+      padCtx.arc(st[0].x, st[0].y, base * 0.5, 0, 7);
+      padCtx.fillStyle = '#0B1730';
+      padCtx.fill();
+    }
+  });
+}
+
+(function wirePad() {
+  var drawing = false, cur = null;
+  function pt(e) {
+    var r = pad.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * pad.width / r.width, y: (e.clientY - r.top) * pad.height / r.height };
+  }
+  pad.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    try { pad.setPointerCapture(e.pointerId); } catch (err) {}
+    drawing = true; cur = [pt(e)]; padStrokes.push(cur);
+    $('padPh').hidden = true;
+    redrawPad();
+  });
+  pad.addEventListener('pointermove', function (e) {
+    if (!drawing) return;
+    var p = pt(e), last = cur[cur.length - 1];
+    if (Math.hypot(p.x - last.x, p.y - last.y) < 1.4) return;
+    cur.push(p);
+    redrawPad();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+    pad.addEventListener(t, function () {
+      if (!drawing) return;
+      drawing = false;
+      $('padOk').disabled = !padStrokes.length;
+    });
+  });
+})();
+
+$('padOk').onclick = function () {
+  var trimmed = trimCanvas(pad, 8);
+  if (!trimmed) { toast('No hay ningún trazo que recortar.'); return; }
+  closeDialog($('signScrim'));
+  var url = trimmed.canvas.toDataURL('image/png');
+  rememberStamp('sign', url, trimmed.canvas.width, trimmed.canvas.height);
+  placeStamp(url, trimmed.canvas.width, trimmed.canvas.height, 'sign');
+};
+
+/* Recorta el canvas al rectángulo con píxeles no transparentes */
+function trimCanvas(src, padPx) {
+  var w = src.width, h = src.height;
+  var d;
+  try { d = src.getContext('2d').getImageData(0, 0, w, h).data; } catch (e) { return null; }
+  var minX = w, minY = h, maxX = -1, maxY = -1;
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      if (d[(y * w + x) * 4 + 3] > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) return null;
+  var p = padPx || 0;
+  minX = Math.max(0, minX - p); minY = Math.max(0, minY - p);
+  maxX = Math.min(w - 1, maxX + p); maxY = Math.min(h - 1, maxY + p);
+  var out = document.createElement('canvas');
+  out.width = maxX - minX + 1; out.height = maxY - minY + 1;
+  out.getContext('2d').drawImage(src, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
+  return { canvas: out };
+}
+
+/* Pone la firma o la huella en el centro de la página visible */
+function placeStamp(url, natW, natH, kind) {
+  var g = S.pages[currentPageIndex()];
+  /* anchos de partida razonables: una firma ocupa un renglón largo,
+     una huella cabe en su recuadro, una imagen suelta va por la mitad */
+  var wpt = kind === 'sign' ? 150 : kind === 'print' ? 62 : 120;
+  var x = g.W / 2 - wpt / 2;
+  var y = g.H / 2 - (wpt * natH / natW) / 2;
+  var el = makeImage(g.num, x, y, url, natW, natH, kind, wpt);
+  runCmd(cmdAdd(el));
+  setTool('select');
+  var node = nodeOf(el.id);
+  if (node) { scrollElIntoView(node); node.focus({ preventScroll: true }); }
+  toast('Arrástrala hasta su sitio. Las esquinas la agrandan sin deformarla.');
+}
+
+/* --- firmas guardadas mientras dure la pestaña --- */
+var stamps = [];
+try { stamps = JSON.parse(sessionStorage.getItem('tinta.stamps') || '[]'); } catch (e) {}
+function rememberStamp(kind, url, w, h) {
+  stamps = stamps.filter(function (s) { return s.url !== url; });
+  stamps.unshift({ kind: kind, url: url, w: w, h: h });
+  stamps = stamps.slice(0, 4);
+  try { sessionStorage.setItem('tinta.stamps', JSON.stringify(stamps)); } catch (e) {}
+  /* solo esta lista: repintar todo borraría el formulario si está abierto */
+  renderStamps();
+}
+
+/* =====================================================================
+   13 · Imágenes y recorte de fondo
+   ===================================================================== */
+
+/* Qué se está subiendo: cambia los textos del recorte y cómo se guarda */
+var imgIntent = 'image';
+function pickImage(kind) { imgIntent = kind; $('imgFile').click(); }
+$('imgFile').onchange = function (e) { if (e.target.files[0]) startImageFlow(e.target.files[0], imgIntent); e.target.value = ''; };
+
+var CUT_COPY = {
+  print: {
+    t: 'Quitar el fondo de la huella',
+    s: 'La foto de una huella siempre trae el papel detrás. Sube el umbral hasta que quede solo el dibujo de las crestas.',
+    h: 'Si se te empiezan a partir las líneas, bájalo un poco: es mejor que sobre un poco de fondo a que la huella quede incompleta.'
+  },
+  sign: {
+    t: 'Quitar el fondo de la firma',
+    s: 'Sube el umbral hasta que desaparezca el papel y quede solo el trazo de tu firma.',
+    h: 'Con el fondo quitado la firma se puede poner sobre cualquier parte del formulario sin tapar lo que hay debajo.'
+  },
+  image: {
+    t: 'Quitar el fondo',
+    s: 'Si la imagen trae fondo y no quieres que tape el formulario, súbelo hasta que solo quede lo que te interesa.',
+    h: 'En 0 la imagen queda tal cual, con su fondo. Es lo correcto para un sello o una foto que va en un recuadro.'
+  }
+};
+
+var cutState = null;
+function startImageFlow(file, kind) {
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+    showError('Ese formato de imagen no sirve.', 'Usa PNG, JPG o WebP. Si tienes un HEIC del iPhone, ábrelo y expórtalo como JPG.', file.type || file.name);
+    return;
+  }
+  var fr = new FileReader();
+  fr.onload = function () {
+    var img = new Image();
+    img.onload = function () {
+      cutState = { img: img, kind: kind, isPng: file.type === 'image/png' };
+      var copy = CUT_COPY[kind] || CUT_COPY.image;
+      $('cutTitle').textContent = copy.t;
+      $('cutSub').textContent = copy.s;
+      $('cutHint').textContent = copy.h;
+      /* Una firma o una huella fotografiada casi siempre traen papel detrás;
+         un PNG suele venir ya recortado y una imagen suelta puede querer su fondo. */
+      var t0 = (kind === 'image') ? 0 : (file.type === 'image/png' ? 0 : 205);
+      $('cutT').value = t0;
+      $('cutTv').textContent = t0;
+      renderCut();
+      openDialog($('cutScrim'), $('cutT'));
+    };
+    img.onerror = function () { showError('No pude leer esa imagen.', 'El archivo puede estar dañado. Ábrelo en el visor de tu equipo y vuelve a exportarlo.', file.name); };
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+
+$('cutT').oninput = function () { $('cutTv').textContent = $('cutT').value; renderCut(); };
+$('cutCancel').onclick = function () { closeDialog($('cutScrim')); cutState = null; };
+
+/* Pinta los dos lados del diálogo: el original tal cual y el resultado con el
+   fondo quitado. Van juntos a propósito, para que no se pueda repintar uno
+   solo y quedar mostrando cosas distintas. */
+function renderCut() {
+  if (!cutState) return;
+  var img = cutState.img, T = +$('cutT').value;
+  if ($('cutSrc').src !== img.src) $('cutSrc').src = img.src;
+  var maxW = 520, sc = Math.min(1, maxW / img.width);
+  var c = $('cutOut');
+  c.width = Math.max(1, Math.round(img.width * sc));
+  c.height = Math.max(1, Math.round(img.height * sc));
+  var ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+  if (T > 0) applyCut(ctx, c.width, c.height, T);
+  cutState.preview = { T: T };
+}
+
+/* Umbral con borde suave: entre T-34 y T la opacidad baja gradualmente,
+   así el trazo no queda con dientes de sierra. */
+function applyCut(ctx, w, h, T) {
+  var im = ctx.getImageData(0, 0, w, h), d = im.data, soft = 34;
+  for (var i = 0; i < d.length; i += 4) {
+    var l = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+    if (l >= T) d[i + 3] = 0;
+    else if (l > T - soft) d[i + 3] = Math.round(d[i + 3] * (T - l) / soft);
+  }
+  ctx.putImageData(im, 0, 0);
+}
+
+$('cutOk').onclick = function () {
+  if (!cutState) return;
+  var img = cutState.img, T = +$('cutT').value;
+  var c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  var ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  if (T > 0) applyCut(ctx, c.width, c.height, T);
+  var trimmed = T > 0 ? trimCanvas(c, 4) : { canvas: c };
+  if (!trimmed) { toast('Con ese umbral no queda nada de la imagen. Bájalo un poco.'); return; }
+  closeDialog($('cutScrim'));
+  var url = trimmed.canvas.toDataURL('image/png');
+  var kind = cutState.kind;
+  /* Solo se guarda para reusar lo que es tuyo: firma y huella */
+  if (kind === 'sign' || kind === 'print') rememberStamp(kind, url, trimmed.canvas.width, trimmed.canvas.height);
+  placeStamp(url, trimmed.canvas.width, trimmed.canvas.height, kind);
+  cutState = null;
+};
+
+/* =====================================================================
+   14 · Formularios AcroForm
+   ===================================================================== */
+
+function detectForm(libDoc) {
+  var fields = [];
+  try { fields = libDoc.getForm().getFields(); } catch (e) { fields = []; }
+  if (!fields.length) { $('tabForm').hidden = true; return; }
+
+  S.form = { fields: fields.map(function (f) {
+    /* pdf-lib viene minificado: constructor.name está manglado y no sirve.
+       El tipo se averigua con instanceof contra las clases que exporta. */
+    var type = f instanceof PDFLib.PDFTextField ? 'text' :
+               f instanceof PDFLib.PDFCheckBox ? 'check' :
+               (f instanceof PDFLib.PDFDropdown || f instanceof PDFLib.PDFOptionList) ? 'choice' :
+               f instanceof PDFLib.PDFRadioGroup ? 'radio' : 'other';
+    var rects = [];
+    try {
+      f.acroField.getWidgets().forEach(function (w) {
+        var r = w.getRectangle();
+        var pageRef = w.P ? w.P() : null;
+        rects.push({ r: r, ref: pageRef });
+      });
+    } catch (e) {}
+    return { f: f, name: f.getName(), type: type, rects: rects, value: initialValue(f, type) };
+  }) };
+
+  /* Se ubica cada widget en su página comparando referencias */
+  var libPages = libDoc.getPages();
+  S.form.fields.forEach(function (fd) {
+    fd.rects.forEach(function (w) {
+      var idx = 0;
+      for (var i = 0; i < libPages.length; i++) {
+        var annots = libPages[i].node.Annots && libPages[i].node.Annots();
+        if (!annots) continue;
+        for (var j = 0; j < annots.size(); j++) {
+          if (annots.get(j) === w.ref || (w.ref && annots.get(j) && annots.get(j).toString() === w.ref.toString())) { idx = i; }
+        }
+      }
+      w.page = idx + 1;
+    });
+  });
+
+  $('tabForm').hidden = false;
+  renderFields();
+  showBanner('Este PDF trae ' + S.form.fields.length + ' campo' + (S.form.fields.length === 1 ? '' : 's') +
+             ' rellenable' + (S.form.fields.length === 1 ? '' : 's') + ' de verdad. Llénalos desde la pestaña Campos: quedan mejor que escribir encima. Al descargar se aplanan.');
+}
+
+function initialValue(f, type) {
+  try {
+    if (type === 'text') return f.getText() || '';
+    if (type === 'check') return f.isChecked();
+    if (type === 'choice') return (f.getSelected && f.getSelected()[0]) || '';
+    if (type === 'radio') return f.getSelected ? (f.getSelected() || '') : '';
+  } catch (e) {}
+  return '';
+}
+
+function renderFields() {
+  if (!S.form) return;
+  var box = $('fieldsList');
+  box.innerHTML = S.form.fields.map(function (fd, i) {
+    var lbl = '<label for="fld' + i + '">' + esc(fd.name) + '</label>';
+    if (fd.type === 'check') {
+      return '<div class="fld"><div class="check"><input type="checkbox" id="fld' + i + '"' + (fd.value ? ' checked' : '') + '>' +
+             '<label for="fld' + i + '" style="margin:0">' + esc(fd.name) + '</label></div></div>';
+    }
+    if (fd.type === 'choice' || fd.type === 'radio') {
+      var opts = [];
+      try { opts = fd.type === 'radio' ? fd.f.getOptions() : fd.f.getOptions(); } catch (e) {}
+      return '<div class="fld">' + lbl + '<select class="field" id="fld' + i + '"><option value="">—</option>' +
+             opts.map(function (o) { return '<option' + (o === fd.value ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+             '</select></div>';
+    }
+    if (fd.type === 'other') return '<div class="fld">' + lbl + '<p class="hint">Campo de tipo especial; se conserva tal como viene.</p></div>';
+    return '<div class="fld">' + lbl + '<input class="field" id="fld' + i + '" value="' + esc(fd.value || '') + '">' +
+           (fd.rects.length ? '<button class="ir" type="button" data-goto="' + i + '">Ver en la página' + ic('chev-r') + '</button>' : '') + '</div>';
+  }).join('');
+
+  box.querySelectorAll('.field, input[type=checkbox]').forEach(function (inp, n) {
+    var i = +inp.id.replace('fld', '');
+    var fd = S.form.fields[i];
+    if (!fd) return;
+    var handler = function () {
+      var before = fd.value;
+      var after = inp.type === 'checkbox' ? inp.checked : inp.value;
+      if (before === after) return;
+      runCmd({
+        label: 'llenar «' + fd.name + '»',
+        selBefore: S.sel, selAfter: S.sel,
+        do: function () { fd.value = after; if (inp.type === 'checkbox') inp.checked = after; else inp.value = after; paintWidgets(); },
+        undo: function () { fd.value = before; if (inp.type === 'checkbox') inp.checked = before; else inp.value = before; paintWidgets(); }
+      });
+    };
+    if (inp.type === 'checkbox' || inp.tagName === 'SELECT') inp.onchange = handler;
+    else { inp.onchange = handler; inp.oninput = function () { fd.value = inp.value; paintWidgets(); }; }
+  });
+  box.querySelectorAll('[data-goto]').forEach(function (b) {
+    b.onclick = function () {
+      var fd = S.form.fields[+b.dataset.goto];
+      if (!fd.rects.length) return;
+      var w = fd.rects[0], g = S.pages[(w.page || 1) - 1];
+      if (g) { g.node.scrollIntoView({ block: 'center', behavior: 'smooth' }); flashWidget(g, w); }
+    };
+  });
+  paintWidgets();
+}
+
+/* Dibuja el contorno de cada campo nativo y su valor, para que se vea en la
+   hoja lo que se está llenando desde el panel. */
+function paintWidgets() {
+  S.pages.forEach(function (g) {
+    if (!g.layer) return;
+    g.layer.querySelectorAll('.widget,.widget-fill').forEach(function (n) { n.remove(); });
+  });
+  if (!S.form) return;
+  S.form.fields.forEach(function (fd) {
+    fd.rects.forEach(function (w) {
+      var g = S.pages[(w.page || 1) - 1];
+      if (!g) return;
+      var a = userToView(g, w.r.x, w.r.y + w.r.height);
+      var b = userToView(g, w.r.x + w.r.width, w.r.y);
+      var x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]);
+      var ww = Math.abs(b[0] - a[0]), hh = Math.abs(b[1] - a[1]);
+      var box = document.createElement('div');
+      box.className = 'widget';
+      box.style.cssText = 'left:' + (x * S.zoom) + 'px;top:' + (y * S.zoom) + 'px;width:' + (ww * S.zoom) + 'px;height:' + (hh * S.zoom) + 'px';
+      g.layer.appendChild(box);
+      w.box = { x: x, y: y, w: ww, h: hh, page: w.page || 1 };
+      var marcada = fd.type === 'check' && fd.value;
+      var v = fd.type === 'check' ? '' : String(fd.value || '');
+      if (v || marcada) {
+        var fill = document.createElement('div');
+        fill.className = 'widget-fill' + (marcada ? ' check' : '');
+        if (marcada) fill.innerHTML = ic('tick');
+        else fill.textContent = v;
+        fill.style.cssText = 'left:' + (x * S.zoom) + 'px;top:' + (y * S.zoom) + 'px;width:' + (ww * S.zoom) + 'px;height:' +
+          (hh * S.zoom) + 'px;font-size:' + (Math.min(hh * 0.72, 13) * S.zoom) + 'px';
+        if (marcada) fill.style.setProperty('--tick', (Math.min(hh, 18) * S.zoom) + 'px');
+        g.layer.appendChild(fill);
+      }
+    });
+  });
+}
+
+function flashWidget(g, w) {
+  if (!w.box) return;
+  var n = document.createElement('div');
+  n.className = 'widget';
+  n.style.cssText = 'left:' + (w.box.x * S.zoom) + 'px;top:' + (w.box.y * S.zoom) + 'px;width:' + (w.box.w * S.zoom) +
+                    'px;height:' + (w.box.h * S.zoom) + 'px;border:2px solid var(--guide);background:transparent';
+  g.layer.appendChild(n);
+  setTimeout(function () { n.remove(); }, 1400);
+}
+
+/* Avisa si el usuario está dibujando justo encima de un campo nativo */
+function checkWidgetOverlap(el, node) {
+  if (!S.form || !node) return;
+  var hit = false;
+  S.form.fields.forEach(function (fd) {
+    fd.rects.forEach(function (w) {
+      if (!w.box || w.box.page !== el.page || hit) return;
+      var ew = el.w || 20, eh = el.h || 12;
+      if (el.x < w.box.x + w.box.w && el.x + ew > w.box.x && el.y < w.box.y + w.box.h && el.y + eh > w.box.y) hit = true;
+    });
+  });
+  node.classList.toggle('warn', hit);
+  if (hit && !checkWidgetOverlap.warned) {
+    checkWidgetOverlap.warned = true;
+    toast('Estás escribiendo encima de un campo rellenable. Mejor úsalo desde la pestaña Campos.', 'Ir a Campos', function () { showTab('form'); });
+  }
+}
+
+/* =====================================================================
+   15 · Mis datos
+   ===================================================================== */
+
+var DATOS_KEY = 'tinta.datos.v2';
+var DATOS_DEF = [
+  { k: 'nombre', lbl: 'Nombre completo', ac: 'name',            tp: 'text' },
+  { k: 'doc',    lbl: 'Documento',       ac: 'off',             tp: 'text', im: 'numeric' },
+  { k: 'ciudad', lbl: 'Ciudad',          ac: 'address-level2',  tp: 'text' },
+  { k: 'correo', lbl: 'Correo',          ac: 'email',           tp: 'email' },
+  { k: 'tel',    lbl: 'Teléfono',        ac: 'tel',             tp: 'tel' },
+  { k: 'dir',    lbl: 'Dirección',       ac: 'street-address',  tp: 'text' }
+];
+var datos = [], datosEditing = false;
+
+function loadDatos() {
+  var base = {};
+  datos = DATOS_DEF.map(function (d) {
+    var c = Object.assign({}, d, { v: '', fixed: true });
+    base[d.k] = c;
+    return c;
+  });
+  var raw = null;
+  try { raw = JSON.parse(localStorage.getItem(DATOS_KEY) || 'null'); } catch (e) {}
+
+  if (Array.isArray(raw)) {
+    /* Se respeta el orden guardado y los datos que el usuario haya agregado */
+    var out = [], visto = {};
+    raw.forEach(function (s) {
+      if (!s || !s.k || visto[s.k]) return;
+      visto[s.k] = 1;
+      if (base[s.k]) { base[s.k].v = String(s.v || ''); out.push(base[s.k]); }
+      else out.push({ k: String(s.k), lbl: String(s.lbl || 'Dato'), v: String(s.v || ''), fixed: false, tp: 'text', ac: 'off' });
+    });
+    DATOS_DEF.forEach(function (d) { if (!visto[d.k]) out.push(base[d.k]); });
+    datos = out;
+    return;
+  }
+  /* Migración desde la versión anterior, que guardaba un objeto plano */
+  try {
+    var v1 = JSON.parse(localStorage.getItem('tinta.datos.v1') || 'null');
+    if (v1) {
+      datos.forEach(function (d) { if (v1[d.k] != null) d.v = String(v1[d.k]); });
+      saveDatos();
+      localStorage.removeItem('tinta.datos.v1');
+    }
+  } catch (e) {}
+}
+
+function saveDatos() {
+  try {
+    localStorage.setItem(DATOS_KEY, JSON.stringify(datos.map(function (d) {
+      return { k: d.k, lbl: d.lbl, v: d.v };
+    })));
+  } catch (e) { toast('No pude guardar tus datos: este navegador tiene el almacenamiento lleno o bloqueado.'); }
+}
+
+function hoy() {
+  var d = new Date();
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+}
+
+/* --------- vista: cada dato es un botón que lo pone en la página --------- */
+
+function renderDatos() {
+  datosEditing ? renderDatosForm() : renderDatosView();
+  renderStamps();
+}
+
+function renderDatosView() {
+  var llenos = datos.filter(function (d) { return d.v.trim(); });
+  var list = $('datosList'), form = $('datosForm'), edit = $('datosEdit');
+  form.hidden = true;
+  list.hidden = false;
+
+  if (!llenos.length) {
+    edit.hidden = true;
+    list.innerHTML =
+      '<div class="empty-datos">' + ic('user') +
+        '<b>Guarda tus datos una sola vez</b>' +
+        '<span>Nombre, documento, ciudad… y después los pones en cualquier formulario con un toque, sin volver a escribirlos.</span>' +
+        '<button class="btn primary" type="button" id="datosStart">' + ic('pencil') + 'Llenar mis datos</button>' +
+      '</div>';
+    $('datosHint').textContent = 'Se guardan solo en este navegador, en tu equipo. No viajan a ningún servidor.';
+    $('datosStart').onclick = function () { toggleDatosEdit(true); };
+    return;
+  }
+
+  edit.hidden = false;
+  edit.innerHTML = ic('pencil') + 'Editar';
+  list.innerHTML = llenos.map(function (d) {
+    return '<div class="dato"><button class="put" type="button" data-put="' + esc(d.k) + '">' +
+      '<b>' + esc(d.lbl) + '</b><span>' + esc(d.v) + '</span></button></div>';
+  }).join('') +
+  '<div class="dato"><button class="put stamp" type="button" data-put="__fecha">' + ic('calendar') +
+    '<span class="txt"><b>Fecha de hoy</b><span>' + hoy() + '</span></span></button></div>';
+
+  var faltan = datos.length - llenos.length;
+  $('datosHint').textContent = 'Toca un dato para ponerlo sobre la página; luego lo arrastras al renglón.' +
+    (faltan ? ' Te faltan ' + faltan + ' por llenar.' : '');
+
+  list.querySelectorAll('[data-put]').forEach(function (b) {
+    b.onclick = function () {
+      var k = b.dataset.put;
+      if (k === '__fecha') { putTextOnPage(hoy()); return; }
+      var d = datos.find(function (x) { return x.k === k; });
+      if (d && d.v) putTextOnPage(d.v);
+    };
+  });
+}
+
+/* --------- edición: formulario propio, nada de window.prompt --------- */
+
+function toggleDatosEdit(on) {
+  datosEditing = on;
+  renderDatos();
+  if (on) {
+    var first = $('datosForm').querySelector('input');
+    if (first) first.focus();
+  }
+}
+$('datosEdit').onclick = function () { toggleDatosEdit(!datosEditing); };
+
+function renderDatosForm() {
+  var list = $('datosList'), form = $('datosForm'), edit = $('datosEdit');
+  list.hidden = true;
+  form.hidden = false;
+  edit.hidden = false;
+  edit.innerHTML = ic('check') + 'Listo';
+  $('datosHint').textContent = 'Se van guardando solos mientras escribes, en este navegador y nada más. ' +
+    'Agrega los que te pidan seguido: EPS, cargo, placa, lo que sea.';
+
+  form.innerHTML = datos.map(function (d, i) {
+    var label = d.fixed
+      ? '<span>' + esc(d.lbl) + '</span>'
+      : '<div class="lblrow"><input class="lbl" data-lbl="' + i + '" value="' + esc(d.lbl) +
+        '" placeholder="Nombre del dato" aria-label="Nombre del dato"><button class="del" type="button" data-del="' + i +
+        '" aria-label="Quitar este dato" title="Quitar">' + ic('close') + '</button></div>';
+    return '<label class="dfield">' + label +
+      '<input class="field" type="' + (d.tp || 'text') + '" data-val="' + i + '"' +
+      ' value="' + esc(d.v) + '" autocomplete="' + (d.ac || 'off') + '"' +
+      (d.im ? ' inputmode="' + d.im + '"' : '') +
+      ' placeholder="' + esc(d.fixed ? 'Sin definir' : 'Valor') + '"></label>';
+  }).join('') +
+  '<button class="add" type="button" id="datosAdd">' + ic('plus') + 'Agregar otro dato</button>' +
+  '<div class="close"><button class="btn primary" type="button" id="datosDone">Listo</button></div>' +
+  '<button class="wipe" type="button" id="datosWipe">' + ic('trash') + 'Borrar todos mis datos</button>';
+
+  form.querySelectorAll('[data-val]').forEach(function (inp) {
+    inp.oninput = function () { datos[+inp.dataset.val].v = inp.value; queueSaveDatos(); };
+  });
+  form.querySelectorAll('[data-lbl]').forEach(function (inp) {
+    inp.oninput = function () { datos[+inp.dataset.lbl].lbl = inp.value; queueSaveDatos(); };
+  });
+  form.querySelectorAll('[data-del]').forEach(function (b) {
+    b.onclick = function () {
+      var i = +b.dataset.del, quitado = datos[i];
+      datos.splice(i, 1);
+      saveDatos(); renderDatosForm();
+      toast('Quité «' + (quitado.lbl || 'el dato') + '».', 'Deshacer', function () {
+        datos.splice(i, 0, quitado); saveDatos(); renderDatosForm();
+      });
+    };
+  });
+
+  $('datosAdd').onclick = function () {
+    datos.push({ k: 'x' + Date.now().toString(36), lbl: '', v: '', fixed: false, tp: 'text', ac: 'off' });
+    saveDatos(); renderDatosForm();
+    var nuevos = $('datosForm').querySelectorAll('[data-lbl]');
+    if (nuevos.length) nuevos[nuevos.length - 1].focus();
+  };
+  $('datosDone').onclick = function () { toggleDatosEdit(false); };
+  $('datosWipe').onclick = function () {
+    var antes = datos.map(function (d) { return { k: d.k, lbl: d.lbl, v: d.v, fixed: d.fixed, tp: d.tp, ac: d.ac, im: d.im }; });
+    datos = DATOS_DEF.map(function (d) { return Object.assign({}, d, { v: '', fixed: true }); });
+    saveDatos(); renderDatosForm();
+    toast('Borré todos tus datos de este navegador.', 'Deshacer', function () {
+      datos = antes; saveDatos(); renderDatos();
+    });
+  };
+}
+
+var saveDatosT;
+function queueSaveDatos() {
+  clearTimeout(saveDatosT);
+  saveDatosT = setTimeout(saveDatos, 400);
+}
+
+/* --------- firma y huella guardadas en la pestaña --------- */
+
+function renderStamps() {
+  $('firmasList').innerHTML = stamps.length
+    ? stamps.map(function (s, i) {
+        return '<div class="dato"><button class="put stamp" type="button" data-stamp="' + i + '">' +
+          ic(s.kind === 'sign' ? 'sign' : 'finger') +
+          '<span class="txt"><b>' + (s.kind === 'sign' ? 'Firma' : 'Huella digital') + '</b>' +
+          '<span>' + s.w + ' × ' + s.h + ' px</span></span></button></div>';
+      }).join('')
+    : '<p class="hint" style="margin:0">Todavía no has dibujado una firma ni subido una huella.</p>';
+  $('firmasList').querySelectorAll('[data-stamp]').forEach(function (b) {
+    b.onclick = function () {
+      var s = stamps[+b.dataset.stamp];
+      placeStamp(s.url, s.w, s.h, s.kind);
+    };
+  });
+}
+
+/* Pone un texto en el centro de la página visible, listo para arrastrar */
+function putTextOnPage(txt) {
+  if (!S.pdf) { toast('Primero abre un PDF y después pones tus datos encima.'); return; }
+  var g = S.pages[currentPageIndex()];
+  var m = fontMetrics(prefs.family, prefs.bold);
+  var w = measureLine(txt, prefs.family, prefs.bold, prefs.size);
+  var el = makeText(g.num, Math.max(8, g.W / 2 - w / 2), g.H / 2 - m.asc * prefs.size, txt);
+  runCmd(cmdAdd(el));
+  setTool('select');
+  var node = nodeOf(el.id);
+  if (node) { scrollElIntoView(node); node.focus({ preventScroll: true }); }
+  toast('Arrástralo hasta el renglón. Se engancha solo cuando queda cerca.');
+}
+
+/* =====================================================================
+   16 · Panel / pestañas
+   ===================================================================== */
+
+function showTab(which) {
+  var map = { props: ['tabProps', 'paneProps'], datos: ['tabDatos', 'paneDatos'], form: ['tabForm', 'paneForm'] };
+  Object.keys(map).forEach(function (k) {
+    var on = k === which;
+    $(map[k][0]).setAttribute('aria-selected', on ? 'true' : 'false');
+    $(map[k][1]).hidden = !on;
+  });
+  if (window.matchMedia('(max-width:720px)').matches) openSheet(true);
+}
+$('tabProps').onclick = function () { showTab('props'); };
+$('tabDatos').onclick = function () { showTab('datos'); };
+$('tabForm').onclick  = function () { showTab('form'); };
+
+function openSheet(on) { $('side').classList.toggle('up', on); }
+$('sheetBtn').onclick = function () { openSheet(!$('side').classList.contains('up')); };
+$('sheetHandle').onclick = function () { openSheet(false); };
+
+/* =====================================================================
+   17 · Zoom y navegación
+   ===================================================================== */
+
+function setZoom(z, keepCenter) {
+  var old = S.zoom;
+  z = clamp(z, 0.15, 6);
+  if (Math.abs(z - old) < 0.001) return;
+  var anchor = keepCenter === false ? null : deckAnchor();
+  S.zoom = z;
+  S.fit = 'none';
+  sizePages();
+  $('zLvl').textContent = Math.round(z * 100) + '%';
+  if (anchor) applyAnchor(anchor);
+  clearTimeout(setZoom.t);
+  setZoom.t = setTimeout(rerenderAll, 130);
+}
+function deckAnchor() {
+  var r = deck.getBoundingClientRect();
+  var midY = r.top + r.height / 2, midX = r.left + r.width / 2;
+  for (var i = 0; i < S.pages.length; i++) {
+    var pr = S.pages[i].node.getBoundingClientRect();
+    if (pr.bottom > midY) return { i: i, fy: (midY - pr.top) / pr.height, fx: (midX - pr.left) / pr.width };
+  }
+  return null;
+}
+function applyAnchor(a) {
+  var g = S.pages[a.i];
+  if (!g) return;
+  var pr = g.node.getBoundingClientRect(), r = deck.getBoundingClientRect();
+  deck.scrollTop += (pr.top + pr.height * a.fy) - (r.top + r.height / 2);
+  deck.scrollLeft += (pr.left + pr.width * a.fx) - (r.left + r.width / 2);
+}
+
+function fitWidth() {
+  if (!S.pages.length) return;
+  var avail = deck.clientWidth - 34;
+  /* durante un cambio de tamaño la mesa puede medir casi nada por un instante;
+     ajustar con ese número dejaría la página en el mínimo */
+  if (avail < 80) return;
+  var wide = Math.max.apply(null, S.pages.map(function (g) { return g.W; }));
+  setZoom(avail / wide, false);
+  S.fit = 'width';
+  $('zLvl').textContent = Math.round(S.zoom * 100) + '%';
+}
+$('zIn').onclick = function () { setZoom(S.zoom * 1.25); };
+$('zOut').onclick = function () { setZoom(S.zoom / 1.25); };
+$('zFit').onclick = fitWidth;
+$('zOne').onclick = function () { setZoom(1); };
+
+deck.addEventListener('wheel', function (e) {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  setZoom(S.zoom * (e.deltaY < 0 ? 1.11 : 1 / 1.11));
+}, { passive: false });
+
+/* pellizco en móvil */
+(function pinch() {
+  var pts = {}, base = 0, baseZoom = 1;
+  deck.addEventListener('pointerdown', function (e) {
+    if (e.pointerType !== 'touch') return;
+    pts[e.pointerId] = e;
+    var k = Object.keys(pts);
+    if (k.length === 2) { base = dist(); baseZoom = S.zoom; }
+  });
+  deck.addEventListener('pointermove', function (e) {
+    if (!(e.pointerId in pts)) return;
+    pts[e.pointerId] = e;
+    if (Object.keys(pts).length === 2 && base) {
+      e.preventDefault();
+      setZoom(baseZoom * dist() / base);
+    }
+  }, { passive: false });
+  ['pointerup', 'pointercancel'].forEach(function (t) {
+    deck.addEventListener(t, function (e) { delete pts[e.pointerId]; base = 0; });
+  });
+  function dist() {
+    var k = Object.keys(pts);
+    var a = pts[k[0]], b = pts[k[1]];
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  }
+})();
+
+function currentPageIndex() {
+  var r = deck.getBoundingClientRect(), mid = r.top + r.height * 0.4;
+  for (var i = 0; i < S.pages.length; i++) {
+    var pr = S.pages[i].node.getBoundingClientRect();
+    if (pr.bottom > mid) return i;
+  }
+  return Math.max(0, S.pages.length - 1);
+}
+deck.addEventListener('scroll', function () {
+  clearTimeout(deck._t);
+  deck._t = setTimeout(function () {
+    S.page = currentPageIndex() + 1;
+    $('pgLbl').textContent = S.page + ' / ' + S.pages.length;
+  }, 60);
+});
+$('pPrev').onclick = function () { gotoPage(currentPageIndex()); };
+$('pNext').onclick = function () { gotoPage(currentPageIndex() + 2); };
+function gotoPage(n) {
+  n = clamp(n, 1, S.pages.length);
+  S.pages[n - 1].node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
+var resizeT;
+window.addEventListener('resize', function () {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(function () { if (S.fit === 'width') fitWidth(); }, 160);
+});
+
+/* =====================================================================
+   18 · Exportar
+   ===================================================================== */
+
+var STD = {};
+function stdFontName(el) {
+  var f = FAMILIES[el.family];
+  return el.bold ? f.stdB : f.std;
+}
+
+$('save').onclick = function () { doSave(); };
+
+function doSave() {
+  if (!S.pdf) return;
+  closeTypingBurst(); closeNudge();
+  var btn = $('save');
+  btn.disabled = true;
+  var lbl = btn.querySelector('.lbl').textContent;
+  btn.querySelector('.lbl').textContent = 'Preparando…';
+  /* en móvil el botón es solo un ícono y no se ve ese texto */
+  toast('Preparando el PDF…', null, null, 10000);
+  (S.encrypted ? exportRaster() : exportVector())
+    .then(function (bytes) { download(bytes); })
+    .catch(function (e) {
+      console.error(e);
+      showError('No pude generar el PDF.',
+        'El documento se editó bien pero falló al escribirse. Si trae campos de formulario poco comunes, prueba a descargar de nuevo; si insiste, cuéntame qué dice la línea de abajo.',
+        (e && e.message) || String(e));
+    })
+    .then(function () {
+      btn.disabled = false;
+      btn.querySelector('.lbl').textContent = lbl;
+    });
+}
+
+function exportVector() {
+  return PDFLib.PDFDocument.load(S.bytes, { updateMetadata: false }).then(function (doc) {
+    var pages = doc.getPages();
+    var fonts = {};
+    var needed = {};
+    S.els.forEach(function (el) { if (el.type === 'text') needed[stdFontName(el)] = 1; });
+    /* Helvetica siempre, para las apariencias de los campos del formulario */
+    needed['Helvetica'] = 1;
+    var chain = Promise.resolve();
+    Object.keys(needed).forEach(function (n) {
+      chain = chain.then(function () {
+        return doc.embedFont(n, { subset: false }).then(function (f) { fonts[n] = f; });
+      });
+    });
+
+    return chain.then(function () {
+      /* 1 · campos nativos */
+      if (S.form) {
+        var form = doc.getForm();
+        S.form.fields.forEach(function (fd) {
+          try {
+            var f = form.getField(fd.name);
+            if (fd.type === 'text') f.setText(String(fd.value || ''));
+            else if (fd.type === 'check') { fd.value ? f.check() : f.uncheck(); }
+            else if (fd.type === 'choice' && fd.value) f.select(String(fd.value));
+            else if (fd.type === 'radio' && fd.value) f.select(String(fd.value));
+          } catch (e) { console.warn('Tinta: no pude llenar «' + fd.name + '»', e); }
+        });
+        try { form.updateFieldAppearances(fonts['Helvetica']); } catch (e) { console.warn('Tinta: apariencias', e); }
+      }
+
+      /* 2 · elementos, con una matriz por página */
+      var jobs = [];
+      S.pages.forEach(function (g, i) {
+        var mine = S.els.filter(function (el) { return el.page === g.num; });
+        if (!mine.length) return;
+        var page = pages[i];
+        jobs.push(drawOnPage(doc, page, g, mine, fonts));
+      });
+      return Promise.all(jobs);
+    }).then(function () {
+      /* 3 · aplanar el formulario para que nadie cambie lo escrito */
+      if (S.form) {
+        try { doc.getForm().flatten(); }
+        catch (e) {
+          console.warn('Tinta: no se pudo aplanar', e);
+          toast('Los campos quedaron llenos pero editables: este PDF no dejó aplanarlos.');
+        }
+      }
+      return doc.save({ useObjectStreams: false });
+    });
+  });
+}
+
+/* Dibuja los elementos de una página. La matriz se aplica una sola vez y
+   todo lo demás va en coordenadas de vista con y hacia arriba.
+   Las imágenes embebidas viven en un mapa aparte: si se colgaran del elemento
+   quedarían referencias circulares a pdf-lib dentro del estado. */
+function drawOnPage(doc, page, g, els, fonts) {
+  var imgs = els.filter(function (e) { return e.type === 'image'; });
+  var embedded = new Map();
+  return Promise.all(imgs.map(function (el) {
+    return embedImage(doc, el.src).then(function (img) { embedded.set(el.id, img); });
+  })).then(function () {
+    page.pushOperators(PDFLib.pushGraphicsState(), PDFLib.concatTransformationMatrix.apply(null, g.M));
+
+    els.forEach(function (el) {
+      if (el.type === 'text') drawTextEl(page, g, el, fonts);
+      else drawImageEl(page, g, el, embedded.get(el.id));
+    });
+
+    page.pushOperators(PDFLib.popGraphicsState());
+  });
+}
+
+function drawTextEl(page, g, el, fonts) {
+  var name = stdFontName(el);
+  var font = fonts[name];
+  if (!font) return;
+  var m = fontMetrics(el.family, el.bold);
+  var lineH = (m.asc + m.desc) * el.size;
+  var lines = String(el.text).split('\n');
+  var col = hexToRgb(el.color);
+  /* centro del elemento en coordenadas de vista, para girar alrededor de él */
+  var cx = el.x + (el.w || 0) / 2, cy = el.y + (el.h || lineH * lines.length) / 2;
+
+  lines.forEach(function (line, i) {
+    var clean = sanitize(line, font);
+    if (!clean) return;
+    var bx = el.x, by = el.y + m.asc * el.size + i * lineH;   // línea base, y hacia abajo
+    if (el.rot) { var p = rotPt(bx, by, cx, cy, el.rot); bx = p[0]; by = p[1]; }
+    page.drawText(clean, {
+      x: bx,
+      y: g.H - by,                       // a y hacia arriba; la matriz hace el resto
+      size: el.size,
+      font: font,
+      color: PDFLib.rgb(col[0], col[1], col[2]),
+      rotate: el.rot ? PDFLib.degrees(-el.rot) : undefined
+    });
+  });
+}
+
+function drawImageEl(page, g, el, img) {
+  if (!img) return;
+  /* pdf-lib ancla la imagen en su esquina inferior izquierda */
+  var bx = el.x, by = el.y + el.h;
+  if (el.rot) {
+    var cx = el.x + el.w / 2, cy = el.y + el.h / 2;
+    var p = rotPt(bx, by, cx, cy, el.rot);
+    bx = p[0]; by = p[1];
+  }
+  page.drawImage(img, {
+    x: bx, y: g.H - by, width: el.w, height: el.h,
+    rotate: el.rot ? PDFLib.degrees(-el.rot) : undefined
+  });
+}
+
+function embedImage(doc, dataUrl) {
+  var isPng = /^data:image\/png/i.test(dataUrl);
+  return isPng ? doc.embedPng(dataUrl) : doc.embedJpg(dataUrl);
+}
+
+/* Quita lo que la fuente estándar no puede escribir, en vez de reventar */
+function sanitize(s, font) {
+  var out = '';
+  for (var i = 0; i < s.length; i++) {
+    try { font.encodeText(s[i]); out += s[i]; } catch (e) {}
+  }
+  return out;
+}
+
+function hexToRgb(h) {
+  var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h || '#000');
+  if (!m) return [0, 0, 0];
+  return [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255];
+}
+
+/* Camino alternativo para PDFs cifrados: se rasteriza lo que se ve y se
+   arma un PDF nuevo. Pierde el texto seleccionable, pero sale un archivo. */
+function exportRaster() {
+  toast('Este PDF está cifrado: generando una copia rasterizada…', null, null, 6000);
+  return PDFLib.PDFDocument.create().then(function (doc) {
+    var chain = Promise.resolve();
+    S.pages.forEach(function (g, i) {
+      chain = chain.then(function () {
+        var scale = 2;
+        var vp = g.jsPage.getViewport({ scale: scale });
+        var c = document.createElement('canvas');
+        c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        /* intent 'print' no usa requestAnimationFrame: así la descarga termina
+           aunque el usuario se cambie de pestaña mientras se genera. */
+        return g.jsPage.render({ canvasContext: c.getContext('2d'), viewport: vp, background: '#FFFFFF', intent: 'print' }).promise
+          .then(function () { return doc.embedPng(c.toDataURL('image/png')); })
+          .then(function (png) {
+            var page = doc.addPage([g.W, g.H]);
+            page.drawImage(png, { x: 0, y: 0, width: g.W, height: g.H });
+            var mine = S.els.filter(function (el) { return el.page === g.num; });
+            if (!mine.length) return;
+            var needed = {};
+            mine.forEach(function (el) { if (el.type === 'text') needed[stdFontName(el)] = 1; });
+            var fonts = {}, sub = Promise.resolve(), embedded = new Map();
+            Object.keys(needed).forEach(function (n) {
+              sub = sub.then(function () { return doc.embedFont(n).then(function (f) { fonts[n] = f; }); });
+            });
+            return sub.then(function () {
+              /* la página nueva ya está en coordenadas de vista: matriz identidad */
+              var flat = { H: g.H };
+              return Promise.all(mine.filter(function (e) { return e.type === 'image'; })
+                .map(function (el) { return embedImage(doc, el.src).then(function (im) { embedded.set(el.id, im); }); }))
+                .then(function () {
+                  mine.forEach(function (el) {
+                    if (el.type === 'text') drawTextEl(page, flat, el, fonts);
+                    else drawImageEl(page, flat, el, embedded.get(el.id));
+                  });
+                });
+            });
+          });
+      });
+    });
+    return chain.then(function () { return doc.save(); });
+  });
+}
+
+function download(bytes) {
+  var blob = new Blob([bytes], { type: 'application/pdf' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = S.name.replace(/\.pdf$/i, '') + ' - diligenciado.pdf';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  S.dirty = false;
+  toast('Listo. Quedó en tus descargas.');
+}
+
+/* =====================================================================
+   19 · Teclado
+   ===================================================================== */
+
+document.addEventListener('keydown', function (e) {
+  var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+  var mod = e.metaKey || e.ctrlKey;
+
+  if (mod && (e.key === 'z' || e.key === 'Z')) {
+    if (typing && e.target.isContentEditable) return;    // ya lo maneja el editor en línea
+    e.preventDefault();
+    e.shiftKey ? redo() : undo();
+    return;
+  }
+  if (mod && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); return; }
+  if (mod && (e.key === 's' || e.key === 'S')) { e.preventDefault(); if (!$('save').disabled) doSave(); return; }
+  if (mod && (e.key === 'o' || e.key === 'O')) { e.preventDefault(); $('file').click(); return; }
+  if (typing) return;
+
+  if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel) { e.preventDefault(); var el = elById(S.sel); if (el) runCmd(cmdRemove(el)); return; }
+  if (e.key === 'Escape') { select(null); setTool('select'); return; }
+  if (!S.pdf) return;
+  if (e.key === 't' || e.key === 'T') setTool('text');
+  if (e.key === 'v' || e.key === 'V') setTool('select');
+  if (e.key === 'PageDown') { e.preventDefault(); gotoPage(currentPageIndex() + 2); }
+  if (e.key === 'PageUp') { e.preventDefault(); gotoPage(currentPageIndex()); }
+  if (mod && (e.key === '=' || e.key === '+')) { e.preventDefault(); setZoom(S.zoom * 1.25); }
+  if (mod && e.key === '-') { e.preventDefault(); setZoom(S.zoom / 1.25); }
+  if (mod && e.key === '0') { e.preventDefault(); fitWidth(); }
+});
+
+/* =====================================================================
+   20 · Recuperación y salida
+   ---------------------------------------------------------------------
+   El trabajo se guarda en sessionStorage, que muere con la pestaña: no
+   quiero dejar la firma de nadie en el disco de un equipo compartido.
+   ===================================================================== */
+
+function workKey() { return 'tinta.work|' + S.name + '|' + (S.bytes ? S.bytes.byteLength : 0); }
+var saveT;
+function saveWork() {
+  if (!S.pdf) return;
+  clearTimeout(saveT);
+  saveT = setTimeout(function () {
+    var payload = JSON.stringify({ els: S.els, form: S.form ? S.form.fields.map(function (f) { return { name: f.name, value: f.value }; }) : null });
+    try { sessionStorage.setItem(workKey(), payload); }
+    catch (e) {
+      /* sin espacio: se guarda al menos el texto */
+      try {
+        sessionStorage.setItem(workKey(), JSON.stringify({
+          els: S.els.filter(function (el) { return el.type === 'text'; }), trimmed: true
+        }));
+      } catch (e2) {}
+    }
+  }, 700);
+}
+
+function restoreWork() {
+  var raw;
+  try { raw = sessionStorage.getItem(workKey()); } catch (e) { return; }
+  if (!raw) return;
+  var data;
+  try { data = JSON.parse(raw); } catch (e) { return; }
+  if (!data || !data.els || !data.els.length) return;
+  toast('Encontré lo que estabas haciendo con este archivo.', 'Recuperar', function () {
+    data.els.forEach(function (el) { S.els.push(el); mountEl(el); });
+    if (data.form && S.form) {
+      data.form.forEach(function (sv) {
+        var fd = S.form.fields.find(function (f) { return f.name === sv.name; });
+        if (fd) fd.value = sv.value;
+      });
+      renderFields();
+    }
+    S.dirty = true;
+    if (data.trimmed) toast('Recuperé los textos. Las imágenes no cupieron en la memoria de la pestaña, hay que volver a ponerlas.', null, null, 6000);
+  }, 9000);
+}
+
+window.addEventListener('beforeunload', function (e) {
+  if (!S.dirty || !S.els.length) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+
+/* =====================================================================
+   21 · Arranque
+   ===================================================================== */
+
+loadDatos();
+renderDatos();
+syncHistory();
+$('zLvl').textContent = '100%';
+
+/* Superficie mínima para revisar cosas desde la consola del navegador.
+   Sirve para comprobar el mapeo de coordenadas sin tener que adivinar. */
+window.Tinta = {
+  state: S,
+  undoStack: undoStack,
+  redoStack: redoStack,
+  geom: function (n) { return S.pages[(n || 1) - 1]; },
+  viewToUser: viewToUser,
+  userToView: userToView,
+  metrics: fontMetrics,
+  addText: function (page, x, y, text) {
+    var el = makeText(page, x, y, text);
+    runCmd(cmdAdd(el));
+    return el;
+  },
+  addImage: function (page, x, y, src, w, h, kind, widthPt) {
+    var el = makeImage(page, x, y, src, w, h, kind, widthPt);
+    runCmd(cmdAdd(el));
+    return el;
+  },
+  exportBytes: function () { return S.encrypted ? exportRaster() : exportVector(); },
+  undo: undo,
+  redo: redo
+};
+
+})();
+</script>
+</body>
+</html>
