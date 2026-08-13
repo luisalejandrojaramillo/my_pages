@@ -1800,23 +1800,34 @@ document.querySelectorAll('.tool[data-tool]').forEach(function (b) {
 });
 
 /* --- clic sobre una página vacía --- */
+
+/* Con la herramienta de mover, tocar el papel suelta la selección */
 deck.addEventListener('pointerdown', function (e) {
   var pageNode = e.target.closest ? e.target.closest('.page') : null;
   if (!pageNode) return;
   if (e.target.closest('.el')) return;                 // lo maneja el elemento
-  if (S.tool === 'select') { select(null); return; }
+  if (S.tool === 'select') select(null);
+});
+
+/* El texto se crea al soltar el clic, no al presionarlo.
+   Creándolo en pointerdown, el mousedown que viene detrás le mueve el foco al
+   contenedor y el editor recién abierto se cierra de una: como el texto todavía
+   está vacío, se cancelaría solo y daría la impresión de que no se puede
+   escribir. En click el foco ya se movió y el editor se queda abierto. */
+deck.addEventListener('click', function (e) {
+  if (S.tool !== 'text') return;
+  var pageNode = e.target.closest ? e.target.closest('.page') : null;
+  if (!pageNode || e.target.closest('.el')) return;
   var g = S.pages[+pageNode.dataset.page - 1];
   var r = pageNode.getBoundingClientRect();
-  var x = (e.clientX - r.left) / S.zoom, y = (e.clientY - r.top) / S.zoom;
-  if (S.tool === 'text') {
-    var m = fontMetrics(prefs.family, prefs.bold);
-    /* el clic marca la línea base, que es como uno mira un renglón */
-    var el = makeText(g.num, x, y - m.asc * prefs.size, '');
-    runCmd(cmdAdd(el));
-    setTool('select');
-    var node = nodeOf(el.id);
-    startEditing(node, el, true);
-  }
+  var m = fontMetrics(prefs.family, prefs.bold);
+  /* el punto donde tocó es la línea base, que es como uno mira un renglón */
+  var el = makeText(g.num,
+    (e.clientX - r.left) / S.zoom,
+    (e.clientY - r.top) / S.zoom - m.asc * prefs.size, '');
+  runCmd(cmdAdd(el));
+  setTool('select');
+  startEditing(nodeOf(el.id), el);
 });
 
 /* --- arrastre de elementos y manijas --- */
@@ -2019,21 +2030,23 @@ var PLAINTEXT_OK = (function () {
   try { d.contentEditable = 'plaintext-only'; return d.contentEditable === 'plaintext-only'; } catch (e) { return false; }
 })();
 
-function startEditing(node, el, atEnd) {
+function startEditing(node, el) {
   if (!node || el.type !== 'text') return;
   var body = node.querySelector('.body');
   node.classList.add('editing');
   body.contentEditable = PLAINTEXT_OK ? 'plaintext-only' : 'true';
   body.spellcheck = false;
   body.focus();
-  if (atEnd || !el.text) placeCaretEnd(body);
-  else document.execCommand && document.execCommand('selectAll', false, null);
+  /* El cursor va al final, nunca seleccionando todo: acá se entra a corregir
+     un dato, y que la primera tecla borre el renglón entero es un desastre.
+     Ya estando en edición se puede hacer clic donde sea para mover el cursor. */
+  placeCaretEnd(body);
   /* En móvil el foco dentro de un manejador de puntero a veces no prende a la
      primera; se reintenta en el siguiente cuadro. */
   requestAnimationFrame(function () {
     if (node.classList.contains('editing') && document.activeElement !== body) {
       body.focus();
-      if (atEnd || !el.text) placeCaretEnd(body);
+      placeCaretEnd(body);
     }
   });
 
